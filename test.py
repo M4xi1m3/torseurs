@@ -83,14 +83,24 @@ class Expression:
         """
         Add an expression to another
         """
+        if self.next == None:
+            self.next = to_add;
+        else:
+            self.next.add(to_add);
 
 
 def main():
-    a = Expression(4, None, Expression(2, "c", Expression(3, "a", Expression(2, "b", Expression(1, "a")))))
+    a = Expression(4, None, Expression(2, "c", Expression(3, "a", Expression(2, "b", Expression(1, "a")))));
+    b = Expression(2, None, Expression(10, "c", Expression(85, "a", Expression(21, "b"))));
     print(a);
+    print(b);
     a.multiply_scalar(5);
+    a.simplify();
+    print(a);
+    a.add(b);
     print(a);
     a.simplify();
     print(a);
+    
 
 main();
