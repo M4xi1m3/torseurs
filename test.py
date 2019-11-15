@@ -12,7 +12,12 @@ class Expression:
         if (self.var == None):
             return str(self.num);
         else:
-            return str(self.num) + self.var;
+            if(self.num == 1):
+                return self.var;
+            elif self.num == -1:
+                return "-" + self.var;
+            else:
+                return str(self.num) + self.var;
         
     def get_display(self):
         """
@@ -62,13 +67,11 @@ class Expression:
             return self;
         
         current = self.next;
-        
         while current != None:
             if self.var == current.var:
                 self.num += current.num;
                 current.num = 0;
             current = current.next;
-        
 
         return self.next.simplify();
     
@@ -87,20 +90,53 @@ class Expression:
             self.next = to_add;
         else:
             self.next.add(to_add);
-
+    
+    @staticmethod
+    def __split_numbers(text):
+        number = "";
+        var = "";
+        for c in text:
+            if (c in "-+0123456789."):
+                number += c;
+            else:
+                var += c;
+        return (number, var);
+    
+    @staticmethod
+    def parse(text):
+        """
+        Parses a given expression
+        """
+        tokens = text.split("+");
+        out = [];
+        
+        for token in tokens:
+            token = token.replace(" ", "")
+            num, var = Expression.__split_numbers(token);
+            if (num == "-"):
+                num = "-1";
+            elif (num == ""):
+                num = "1";
+            elif (num == "+"):
+                num = "1";
+            if (var == ""):
+                var = None;
+            out.append((num, var));
+        
+        e = None;
+        
+        for i in out:
+            e = Expression(float(i[0]), i[1], e);
+        e.simplify();
+        return(e);
+        
 
 def main():
-    a = Expression(4, None, Expression(2, "c", Expression(3, "a", Expression(2, "b", Expression(1, "a")))));
-    b = Expression(2, None, Expression(10, "c", Expression(85, "a", Expression(21, "b"))));
+    a = Expression.parse("3x + 5y + 6z + 34");
+    b = Expression.parse("7x + y + 69z + 567");
+    c = Expression.parse("-x + 32y + 2z + -1");
     print(a);
     print(b);
-    a.multiply_scalar(5);
-    a.simplify();
-    print(a);
-    a.add(b);
-    print(a);
-    a.simplify();
-    print(a);
-    
+    print(c);
 
 main();
