@@ -214,10 +214,12 @@ class ExpressionParser:
         for i in out:
             e = ExpressionNode(float(i[0]), i[1], e);
         return(Expression(e).simplify());
+        
 
 class ExpressionSolver:
     @staticmethod
     def __solve_matrix(equations):
+        print(equations);
         #the constants of a system of linear equations are stored in a list for each equation in the system
         """
         for example the system below:
@@ -232,29 +234,29 @@ class ExpressionSolver:
         for eq in range(len(equations)):
             #print "equations 1", equations
             #find an equation whose first element is not zero and call it index
-            index=0
+            index = 0;
             for i in range(len(equations)):
                 if equations[i][0] != 0:
-                    index=i;
+                    index = i;
                     break;
             #print "index "+str(eq)+": ",index
             #for the equation[index] calc the lists next itam  as follows
-            lists.append([-1.0*i/equations[index][0] for i in equations[index][1:]])
+            lists.append([i * -1 / equations[index][0] for i in equations[index][1:]]);
             #print "list"+str(eq)+": ", lists[-1]
             #remve equation[index] and modify the others
-            equations.pop(index)
+            equations.pop(index);
             for i in equations:
                 for j in range(len(lists[-1])):
-                    i[j+1]+=i[0]*lists[-1][j]
+                    i[j+1] = lists[-1][j] * i[0] + i[j+1];
                 i.pop(0)
 
-        lists.reverse()
+        lists.reverse();
 
-        answers=[lists[0][0]]
+        answers = [lists[0][0]];
         for i in range(1,len(lists)):
-            tmpans=lists[i][-1]
+            tmpans = lists[i][-1]
             for j in range(len(lists[i])-1):
-                tmpans+=lists[i][j]*answers[-1-j]
+                tmpans += lists[i][j] * answers[-1-j]
             answers.append(tmpans)
         answers.reverse()
         return answers
