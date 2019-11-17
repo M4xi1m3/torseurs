@@ -1,50 +1,11 @@
-class Expression:
+import copy;
+
+class ExpressionNode:
     def __init__(self, num = 0, var = None, next = None):
         self.next = next;
         self.num = num;
         self.var = var;
-        self.__already_simplified = False;
-    
-    def replace_variables(self, dictio):
-        for key, val in dictio.items():
-            self.replace_variable(key, val);
-    
-    def replace_variable(self, var, value):
-        if (self.var == var):
-            self.var = None;
-            self.num *= value;
-        
-        if (self.next == None):
-            return self;
-        else:
-            return self.next.replace_variable(var, value);
-    
-    def get_variables(self, array = []):
-        """
-        Gets list of variables names in expression
-        """
-        if (self.var in array):
-            pass;
-        else:
-            array.append(self.var);
-        
-        if (self.next == None):
-            return array;
-        else:
-            return self.next.get_variables(array);
-    
-    def get_value_for(self, var_name):
-        """
-        Get multiplier of specified variable
-        """
-        if (self.var == var_name):
-            return self.num;
-        else:
-            if (self.next == None):
-                return 0;
-            else:
-                return self.next.get_value_for(var_name);
-    
+
     def get_individual_display(self):
         """
         Get a display for the current symbol (ex: 3a).
@@ -58,87 +19,172 @@ class Expression:
                 return "-" + self.var;
             else:
                 return str(self.num) + self.var;
+    def __repr__(self):
+        return "ExprNode(" + self.get_individual_display() + ")";
+
+class Expression:
+    def __init__(self, head = None):
+        self.head = head;
+
+    def replace_variable(self, var, value):
+        temp = self.head;
         
+        while (temp != None):
+            if (temp.var == var):
+                temp.num *= value;
+                temp.var = None;
+            temp = temp.next;
+        return self;
+
+    def replace_variables(self, dictio):
+        for key, val in dictio.items():
+            self.replace_variable(key, val);
+
+    def get_variables(self):
+        """
+        Gets list of variables names in expression
+        """
+        array = [];
+        temp = self.head;
+        
+        while(temp != None):
+            if (temp.var not in array):
+                array.append(temp.var);
+            temp = temp.next;
+        return array;
+
+    def get_value_for(self, var_name):
+        """
+        Get multiplier of specified variable
+        """
+        temp = self.head;
+        
+        while(temp != None):
+            if (temp.var == var_name):
+                return temp.num;
+            temp = temp.next;
+        return 0;
+
     def get_display(self):
         """
         Get a display for the whole expression (ex: 3a + 4b + -2c + 3)
         """
-        if (self.next == None):
-            return self.get_individual_display();
-        else:
-            return self.next.get_display()  + " + " + self.get_individual_display();
-    
+        out = "";
+        temp = self.head;
+        
+        while(temp != None):
+            out += temp.get_individual_display();
+            if (temp.next != None):
+                out += " + ";
+            temp = temp.next;
+        return out;
+
     def __repr__(self):
-        return self.get_display();
-    
+        return "Expr(" + self.get_display() + ")";
+
     def multiply_scalar(self, scalar):
         """
         Multiply the expression by a scalar.
         """
-        self.num *= scalar;
-        if (self.next == None):
-            return self;
-        else:
-            return self.next.multiply_scalar(scalar);
-    
-    def __simplify_remove_zero(self, previous):
+        temp = self.head;
+        
+        while(temp != None):
+            temp.num *= scalar;
+            temp = temp.next;
+        return self;
+
+    def multiply(self, expression):
         """
-        Remove part of expression where num = 0.
+        Multiply two expressions together
+        (Warning: Throws exception when tryingo to do var * var )
         """
-        if (self.next == None):
-            if (self.num == 0):
-                if (previous != None):
-                    previous.next = None;
-            return self;
-        else:
-            if (self.num == 0):
-                if (previous == None):
-                    self.var = None;
+        temp = self.head;
+        while(temp != None):
+            current = expression.head;
+            while (current != None):
+                if (temp.var == None):
+                    temp.num *= current.num;
+                    temp.var= current.var;
+                elif (current.var == None):
+                    temp.num *= current.num;
                 else:
-                    self.previous.next = self.next;
-        return self.next.__simplify_remove_zero(self);
-        
+                    raise Exception("Mashallah");
+                current = current.next;
+            temp = temp.next;
+        return self;
 
-    def __simplify__add(self):
+    def add(self, expression):
         """
-        Add duplicates variabes.
+        Add an expression to another
         """
-        if (self.next == None):
+        temp = self.head;
+        
+        if (temp == None):
+            self.head = expression.head;
             return self;
         
-        current = self.next;
-        while current != None:
-            if self.var == current.var:
-                self.num += current.num;
-                current.num = 0;
-            current = current.next;
+        while (temp.next != None):
+            temp = temp.next;
+        temp.next = expression.head;
+        return self;
 
-        return self.next.simplify();
+    def __simplify_add(self):
+        temp = self.head;
+        while(temp != None):
+            current = temp.next;
+            while (current != None):
+                if (temp.var == current.var):
+                    temp.num += current.num;
+                    current.num = 0;
+                    current.var = None;
+                current = current.next;
+            temp = temp.next;
+        return self;
+    
+    def __simplify_remove_zero(self):
+        temp = self.head;
+        prev = None;
+        
+        while(temp != None):
+            if (temp.num == 0):
+                if (prev == None):
+                    if (temp.next == None):
+                        self.num = 0;
+                        self.var = None;
+                    else:
+                        self.head = temp.next;
+                else:
+                    if (temp.next == None):
+                        prev.next = None;
+                    else:
+                        prev.next = temp.next;
+                    temp = prev;
+                    prev = None;
+                    continue;
+            prev = temp;
+            temp = temp.next;
+        return self;
     
     def simplify(self):
         """
         Simplify the expression.
         """
-        self.__simplify__add();
-        self.__simplify_remove_zero(None);
-    
-    def add(self, to_add):
-        """
-        Add an expression to another
-        """
-        if self.next == None:
-            self.next = to_add;
-        else:
-            self.next.add(to_add);
-    
+        self.__simplify_add();
+        self.__simplify_remove_zero();
+        return self;
+
+class ExpressionParser:
     @staticmethod
     def __split_numbers(text):
         number = "";
         var = "";
+        var_name = False;
         for c in text:
-            if (c in "-+0123456789."):
+            if (c in "-+0123456789." and var_name == False):
                 number += c;
             else:
+                var_name = True;
+            if (var_name):
                 var += c;
         return (number, var);
     
@@ -152,7 +198,7 @@ class Expression:
         
         for token in tokens:
             token = token.replace(" ", "")
-            num, var = Expression.__split_numbers(token);
+            num, var = ExpressionParser.__split_numbers(token);
             if (num == "-"):
                 num = "-1";
             elif (num == ""):
@@ -166,85 +212,143 @@ class Expression:
         e = None;
         
         for i in out:
-            e = Expression(float(i[0]), i[1], e);
-        e.simplify();
-        return(e);
+            e = ExpressionNode(float(i[0]), i[1], e);
+        return(Expression(e).simplify());
 
-def solve_matrix(equations):
-     #the constants of a system of linear equations are stored in a list for each equation in the system
-     """
-     for example the system below:
-          2x+9y-3z+7w+8=0
-          7x-2y+6z-1w-10=0
-          -8x-3y+2z+5w+4=0
-          0x+2y+z+w+0=0
-     is expressed as the list:
-          [[2,9,-3,7,8],[7,-2,6,-1,-10],[-8,-3,2,5,4],[0,2,1,1,0]]
-     """
-     lists=[] # I failed to name it meaningfully
-     for eq in range(len(equations)):
-          #print "equations 1", equations
-          #find an equation whose first element is not zero and call it index
-          index=0
-          for i in range(len(equations)):
-               if equations[i][0] != 0:
+class ExpressionSolver:
+    @staticmethod
+    def __solve_matrix(equations):
+        #the constants of a system of linear equations are stored in a list for each equation in the system
+        """
+        for example the system below:
+             2x+9y-3z+7w+8=0
+             7x-2y+6z-1w-10=0
+             -8x-3y+2z+5w+4=0
+             0x+2y+z+w+0=0
+        is expressed as the list:
+             [[2,9,-3,7,8],[7,-2,6,-1,-10],[-8,-3,2,5,4],[0,2,1,1,0]]
+        """
+        lists=[] # I failed to name it meaningfully
+        for eq in range(len(equations)):
+            #print "equations 1", equations
+            #find an equation whose first element is not zero and call it index
+            index=0
+            for i in range(len(equations)):
+                if equations[i][0] != 0:
                     index=i;
                     break;
-          #print "index "+str(eq)+": ",index
-          #for the equation[index] calc the lists next itam  as follows
-          lists.append([-1.0*i/equations[index][0] for i in equations[index][1:]])
-          #print "list"+str(eq)+": ", lists[-1]
-          #remve equation[index] and modify the others
-          equations.pop(index)
-          for i in equations:
-               for j in range(len(lists[-1])):
+            #print "index "+str(eq)+": ",index
+            #for the equation[index] calc the lists next itam  as follows
+            lists.append([-1.0*i/equations[index][0] for i in equations[index][1:]])
+            #print "list"+str(eq)+": ", lists[-1]
+            #remve equation[index] and modify the others
+            equations.pop(index)
+            for i in equations:
+                for j in range(len(lists[-1])):
                     i[j+1]+=i[0]*lists[-1][j]
-               i.pop(0)
+                i.pop(0)
 
-     lists.reverse()
+        lists.reverse()
 
-     answers=[lists[0][0]]
-     for i in range(1,len(lists)):
-          tmpans=lists[i][-1]
-          for j in range(len(lists[i])-1):
-               tmpans+=lists[i][j]*answers[-1-j]
-          answers.append(tmpans)
-     answers.reverse()
-     return answers
+        answers=[lists[0][0]]
+        for i in range(1,len(lists)):
+            tmpans=lists[i][-1]
+            for j in range(len(lists[i])-1):
+                tmpans+=lists[i][j]*answers[-1-j]
+            answers.append(tmpans)
+        answers.reverse()
+        return answers
 
-def slove(expression_list):
-    variables = [];
-    
-    for expression in expression_list:
-        variables.extend(x for x in expression.get_variables() if x not in variables);
-    
-    if (None in variables):
-        variables.remove(None);
-    variables.append(None);
-    
-    matrix = [];
-    for expression in expression_list:
-        individual = [];
-        for var in variables:
-            individual.append(expression.get_value_for(var));
-        matrix.append(individual);
-    
-    return dict(zip(variables, solve_matrix(matrix)));    
+    @staticmethod
+    def solve(expression_list):
+        variables = [];
+        
+        for expression in expression_list:
+            variables.extend(x for x in expression.get_variables() if x not in variables);
+        
+        if (None in variables):
+            variables.remove(None);
+        variables.append(None);
+        
+        matrix = [];
+        for expression in expression_list:
+            individual = [];
+            for var in variables:
+                individual.append(expression.get_value_for(var));
+            matrix.append(individual.copy());
+        
+        return dict(zip(variables, ExpressionSolver.__solve_matrix(matrix)));   
+
+def input_number_or_unknown(name, instead = None):
+    val = input(name + ": ");
+    if (val == "?"):
+        return instead;
+    else:
+        return val;
+
+def input_torsors():
+    torsors = [];
+
+    while True:
+        name = input("name: ");
+        if (name == ""):
+            break;
+        print("Position:");
+        point_name = input("Point: ");
+        point_x = ExpressionParser.parse(input_number_or_unknown("x", "x" + point_name));
+        point_y = ExpressionParser.parse(input_number_or_unknown("y", "y" + point_name));
+        point_z = ExpressionParser.parse(input_number_or_unknown("z", "z" + point_name));
+        print("Composantes:");
+        x = ExpressionParser.parse(input_number_or_unknown("x", "x" + name));
+        y = ExpressionParser.parse(input_number_or_unknown("y", "y" + name));
+        z = ExpressionParser.parse(input_number_or_unknown("z", "z" + name));
+        l = ExpressionParser.parse(input_number_or_unknown("l", "l" + name));
+        m = ExpressionParser.parse(input_number_or_unknown("m", "m" + name));
+        n = ExpressionParser.parse(input_number_or_unknown("n", "n" + name));
+        
+        """
+        Mo = Ma + OA ^ R
+        
+        yOA yR
+        zOA zR
+        xOA xR
+        yOA yR
+        
+        x = yOA * zR - zOA * yR
+        y = zOA * xR - xOA * zR
+        z = xOA * yR - yOA * xR
+        
+        xMb = xMa + yOA * zR - zOA * yR
+        yMb = yMa + zOA * xR - xOA * zR
+        zMb = zMa + xOA * yR - yOA * xR
+        
+        """
+        
+        l.add(copy.deepcopy(point_y).multiply(z)).add(copy.deepcopy(point_z).multiply(y).multiply_scalar(-1));
+        m.add(copy.deepcopy(point_z).multiply(x)).add(copy.deepcopy(point_x).multiply(z).multiply_scalar(-1));
+        n.add(copy.deepcopy(point_x).multiply(y)).add(copy.deepcopy(point_y).multiply(x).multiply_scalar(-1));
+        
+        l.simplify();
+        m.simplify();
+        n.simplify();
+        torsors.append((x, y, z, l, m, n));
+    return torsors;
 
 def main():
-    a = Expression.parse("1x + -1y +  2z + -5");
-    b = Expression.parse("3x +  2y +  1z + -10");
-    c = Expression.parse("2x + -3y + -2z + 10");
-    values = slove([a, b, c]);
+    torsors = input_torsors();
     
-    a.replace_variables(values);
-    a.simplify();
-    print(a);
-    b.replace_variables(values);
-    b.simplify();
-    print(b);
-    c.replace_variables(values);
-    c.simplify();
-    print(c);
+    print();
+    
+    equations = [Expression(ExpressionNode(0)) for i in range(5)];
+    
+    for torsor in torsors:
+        for i in range(5):
+            equations[i].add(torsor[i]);
+    
+    for i in range(5):
+        equations[i].simplify();
+    
+    print(ExpressionSolver.solve(equations));
+    
 
 main();
