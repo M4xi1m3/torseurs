@@ -25,7 +25,7 @@ class ExpressionNode: # DONE
 class Expression:
     def __init__(self, head = None):
         self.head = head;
-
+"""
     def replace_variable(self, var, value):
         temp = self.head;
         
@@ -39,8 +39,8 @@ class Expression:
     def replace_variables(self, dictio):
         for key, val in dictio.items():
             self.replace_variable(key, val);
-
-    def get_variables(self):
+"""
+    def get_variables(self): # DONE
         """
         Gets list of variables names in expression
         """

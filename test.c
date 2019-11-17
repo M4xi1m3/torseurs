@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 typedef struct expressionNode ExpressionNode;
 struct expressionNode {
@@ -12,6 +13,8 @@ struct expressionNode {
 typedef struct expression Expression;
 struct expression {
     ExpressionNode* head;
+    int should_free_strings;
+    int should_free_zero;
 };
 
 /**
@@ -19,7 +22,7 @@ struct expression {
  */
 int EN_get_individual_display(ExpressionNode* self, char* buffer, size_t buffer_len) {
     if (strcmp(self->var, "") == 0) {
-        snprintf(buffer, buffer_len, "%g", self->num);
+        snprintf(buffer, buffer_len, "%G", self->num);
     } else {
         if (self->num == 1) {
             snprintf(buffer, buffer_len, "%s", self->var);
@@ -192,11 +195,14 @@ int E__simplify_remove_zero(Expression* self, int should_free) {
  * Simplify and expression.
  */
 int E_simplify(Expression* self) {
-    E__simplify_add(self, 0);
-    E__simplify_remove_zero(self, 1);
+    E__simplify_add(self, self->should_free_strings);
+    E__simplify_remove_zero(self, self->should_free_zero);
     return 0;
 }
 
+/**
+ * Get the value of a specific variable.
+ */
 double E_get_value_for(Expression* self, char* var) {
     ExpressionNode* temp = self->head;
     
@@ -209,6 +215,9 @@ double E_get_value_for(Expression* self, char* var) {
     return 0;
 }
 
+/**
+ * Get list of all variables.
+ */
 int E_get_variables(Expression* self, char** var_names, int max_vars) {
     ExpressionNode* temp = self->head;
     
@@ -236,54 +245,139 @@ int E_get_variables(Expression* self, char** var_names, int max_vars) {
     return num_vars;
 }
 
-int main() {
-    ExpressionNode* a = malloc(sizeof(ExpressionNode));
-    a->next = NULL;
-    a->num = 42;
-    a->var = "x";
-    ExpressionNode* b = malloc(sizeof(ExpressionNode));
-    b->next = a;
-    b->num = 36;
-    b->var = "y";
-    ExpressionNode* c = malloc(sizeof(ExpressionNode));
-    c->next = b;
-    c->num = 12;
-    c->var = "";
-    
-    Expression e = {c};
-    
-    ExpressionNode* a2 = malloc(sizeof(ExpressionNode));
-    a2->next = NULL;
-    a2->num = 6;
-    a2->var = "x";
-    ExpressionNode* b2 = malloc(sizeof(ExpressionNode));
-    b2->next = a2;
-    b2->num = 9;
-    b2->var = "y";
-    ExpressionNode* c2 = malloc(sizeof(ExpressionNode));
-    c2->next = b2;
-    c2->num = 3.5;
-    c2->var = "";
-    
-    Expression e2 = {c2};
-    
-    char buffer[60];
-    E_multiply_scalar(&e, 20);
-    E_add(&e, &e2);
-    
-    E_simplify(&e);
-    
-    char** var_names = malloc(20 * sizeof(char*));
-    int vars = E_get_variables(&e, var_names, 20);
-    
-    for(int i = 0; i < vars; i++) {
-        printf("%s\n", var_names[i]);
+/**
+ * Free everything.
+ */
+int E_free(Expression* self) {
+    if (self->head == NULL)
+        return 1;
+    ExpressionNode* curr = self->head;
+    while((curr = self->head) != NULL) {
+        self->head = self->head->next;
+        
+        if (self->should_free_strings)
+            free(curr->var);
+        free(curr);
     }
+    return 0;
+}
+
+/**
+ * Printf the shit out of it!
+ */
+void E_debug(Expression* self) {
+    ExpressionNode* temp = self->head;
+    printf("FS %d FZ %d\n", self->should_free_strings, self->should_free_zero);
+    while(temp != NULL) {
+        printf("  N %s M %g\n", temp->var, temp->num);
+        temp = temp->next;
+    }
+}
+
+#define EP_STATE_READ_NUM   0
+#define EP_STATE_READ_VAR   1
+
+#define EP_BUFFER_LEN       40
+
+void EP_append(Expression* e, ExpressionNode* n) {
+    if (e->head == NULL) {
+        e->head = n;
+        return;
+    }
+
+    ExpressionNode* temp = e->head;
+    while(temp->next != NULL) {
+        temp = temp->next;
+    }
+    temp->next = n;
+}
+
+/**
+ * Parses an expression from a string.
+ */
+int EP_parse(Expression* e, char* expression) {
+    E_free(e);
+    e->should_free_strings = 1;
+    e->should_free_zero = 1;
+
+    char buffer[EP_BUFFER_LEN] = {0};
+    int tmp_len = 0;
     
+    ExpressionNode* temp_expression = malloc(sizeof(ExpressionNode));
+    temp_expression->next = NULL;
+    temp_expression->num = 0;
+    temp_expression->var = "";
+
+    int state = EP_STATE_READ_NUM;
+    int expression_len = strlen(expression);
+    for(int i = 0; i <= expression_len; i++) {
+        switch(state) {
+            case EP_STATE_READ_NUM:
+                if (!isspace(expression[i]))
+                    if (strchr("-+0123456789.", expression[i]) == NULL) {
+                        buffer[tmp_len++] = '\0';
+                        sscanf(buffer, "%lg", &(temp_expression->num));
+                        
+                        memset(buffer, 0, EP_BUFFER_LEN);
+                        state = EP_STATE_READ_VAR;
+                        tmp_len = 0;
+                        i--;
+                    } else {
+                        buffer[tmp_len++] = expression[i];
+                    }
+                if(i == expression_len) {
+                    buffer[tmp_len++] = '\0';
+                    sscanf(buffer, "%lg", &(temp_expression->num));
+                    temp_expression->var = malloc(1);
+                    *(temp_expression->var) = '\0';
+                    EP_append(e, temp_expression);
+                    temp_expression = NULL;
+                }
+                break;
+            case EP_STATE_READ_VAR:
+                if (!isspace(expression[i]))
+                    if (expression[i] == '+' || expression[i] == '-') {
+                        
+                        temp_expression->var = malloc(strlen(buffer) + 1);
+                        strcpy(temp_expression->var, buffer);
+                        EP_append(e, temp_expression);
+                        
+                        temp_expression = malloc(sizeof(ExpressionNode));
+                        temp_expression->next = NULL;
+                        temp_expression->num = 0;
+                        temp_expression->var = "";
+                        
+                        memset(buffer, 0, EP_BUFFER_LEN);
+                        state = EP_STATE_READ_NUM;
+                        tmp_len = 0;
+                        
+                        if (expression[i] == '-') {
+                            buffer[tmp_len++] = '-';
+                        }
+                        
+                    } else {
+                        buffer[tmp_len++] = expression[i];
+                    }
+                if(i == expression_len) {
+                    temp_expression->var = malloc(strlen(buffer) + 1);
+                    strcpy(temp_expression->var, buffer);
+                    EP_append(e, temp_expression);
+                    temp_expression = NULL;
+                }
+                break;
+        }
+    }
+}
+
+int main() {
+    Expression e = {NULL, 0, 0};
+    
+    EP_parse(&e, "3x + 12y -7z -2");
+    E_debug(&e);
+    char buffer[60];
     E_get_display(&e, buffer, 60);
     printf("%s\n", buffer);
-    printf("%g\n", E_get_value_for(&e, "x"));
     
-    
+    E_free(&e);
     return 0;
 }
