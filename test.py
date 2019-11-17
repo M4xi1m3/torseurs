@@ -1,12 +1,12 @@
 import copy;
 
-class ExpressionNode:
+class ExpressionNode: # DONE
     def __init__(self, num = 0, var = None, next = None):
         self.next = next;
         self.num = num;
         self.var = var;
 
-    def get_individual_display(self):
+    def get_individual_display(self): # DONE
         """
         Get a display for the current symbol (ex: 3a).
         """
@@ -19,7 +19,7 @@ class ExpressionNode:
                 return "-" + self.var;
             else:
                 return str(self.num) + self.var;
-    def __repr__(self):
+    def __repr__(self): # USELESS
         return "ExprNode(" + self.get_individual_display() + ")";
 
 class Expression:
@@ -53,7 +53,7 @@ class Expression:
             temp = temp.next;
         return array;
 
-    def get_value_for(self, var_name):
+    def get_value_for(self, var_name): # DONE
         """
         Get multiplier of specified variable
         """
@@ -65,7 +65,7 @@ class Expression:
             temp = temp.next;
         return 0;
 
-    def get_display(self):
+    def get_display(self): # DONE
         """
         Get a display for the whole expression (ex: 3a + 4b + -2c + 3)
         """
@@ -79,10 +79,10 @@ class Expression:
             temp = temp.next;
         return out;
 
-    def __repr__(self):
+    def __repr__(self): # USELESS
         return "Expr(" + self.get_display() + ")";
 
-    def multiply_scalar(self, scalar):
+    def multiply_scalar(self, scalar): # DONE
         """
         Multiply the expression by a scalar.
         """
@@ -93,7 +93,7 @@ class Expression:
             temp = temp.next;
         return self;
 
-    def multiply(self, expression):
+    def multiply(self, expression): # DONE
         """
         Multiply two expressions together
         (Warning: Throws exception when tryingo to do var * var )
@@ -113,7 +113,7 @@ class Expression:
             temp = temp.next;
         return self;
 
-    def add(self, expression):
+    def add(self, expression): # DONE
         """
         Add an expression to another
         """
@@ -128,7 +128,7 @@ class Expression:
         temp.next = expression.head;
         return self;
 
-    def __simplify_add(self):
+    def __simplify_add(self): # DONE
         temp = self.head;
         while(temp != None):
             current = temp.next;
@@ -141,7 +141,7 @@ class Expression:
             temp = temp.next;
         return self;
     
-    def __simplify_remove_zero(self):
+    def __simplify_remove_zero(self): # DONE
         temp = self.head;
         prev = None;
         
@@ -149,8 +149,8 @@ class Expression:
             if (temp.num == 0):
                 if (prev == None):
                     if (temp.next == None):
-                        self.num = 0;
-                        self.var = None;
+                        temp.num = 0;
+                        temp.var = None;
                     else:
                         self.head = temp.next;
                 else:
@@ -165,7 +165,7 @@ class Expression:
             temp = temp.next;
         return self;
     
-    def simplify(self):
+    def simplify(self): # DONE
         """
         Simplify the expression.
         """
