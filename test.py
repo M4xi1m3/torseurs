@@ -25,21 +25,8 @@ class ExpressionNode: # DONE
 class Expression:
     def __init__(self, head = None):
         self.head = head;
-"""
-    def replace_variable(self, var, value):
-        temp = self.head;
-        
-        while (temp != None):
-            if (temp.var == var):
-                temp.num *= value;
-                temp.var = None;
-            temp = temp.next;
-        return self;
 
-    def replace_variables(self, dictio):
-        for key, val in dictio.items():
-            self.replace_variable(key, val);
-"""
+
     def get_variables(self): # DONE
         """
         Gets list of variables names in expression
@@ -243,7 +230,7 @@ class ExpressionSolver:
             #for the equation[index] calc the lists next itam  as follows
             lists.append([i * -1 / equations[index][0] for i in equations[index][1:]]);
             #print "list"+str(eq)+": ", lists[-1]
-            #remve equation[index] and modify the others
+            #remove equation[index] and modify the others
             equations.pop(index);
             for i in equations:
                 for j in range(len(lists[-1])):
@@ -333,6 +320,7 @@ def input_torsors():
         l.simplify();
         m.simplify();
         n.simplify();
+        print(name, (x, y, z, l, m, n))
         torsors.append((x, y, z, l, m, n));
     return torsors;
 
@@ -349,6 +337,7 @@ def main():
     
     for i in range(5):
         equations[i].simplify();
+        print(equations[i]);
     
     print(ExpressionSolver.solve(equations));
     

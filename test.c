@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -15,6 +16,13 @@ struct expression {
     ExpressionNode* head;
     int should_free_strings;
     int should_free_zero;
+};
+
+typedef struct solutions Solutions;
+struct solutions {
+    char** names;
+    double* values;
+    int number;
 };
 
 /**
@@ -259,6 +267,7 @@ int E_free(Expression* self) {
             free(curr->var);
         free(curr);
     }
+    free(self);
     return 0;
 }
 
@@ -274,10 +283,198 @@ void E_debug(Expression* self) {
     }
 }
 
-#define EP_STATE_READ_NUM   0
-#define EP_STATE_READ_VAR   1
+/* Affichage du système */
+void ES_show_system(double **A, double *b, int n) {
+	int i , j ;
+	for(i = 0 ; i < n ; i++)
+	{
+		printf("  (");
+		for(j = 0 ; j < n ; j++)
+		{
+			printf("  %.3lg  ",A[i][j]);
+		}
+		printf(" )    (X%d)   =",i+1);
+		printf("\t%.3f",b[i]);
+		printf("\n");
+	}
+}
 
-#define EP_BUFFER_LEN       40
+double** ES_malloc_matrix(int rows, int cols) {
+    double ** ptr = (double**) malloc(sizeof(double*) * rows + sizeof (double) * cols * rows) ;
+    double *  dat = (double* ) (ptr+rows) ;
+    int i ;
+    if ( ptr == NULL ) return NULL;
+    for ( i = 0 ; i < rows ; ++ i , dat += cols ) ptr [ i ] = dat;
+    return ptr;
+}
+
+/**
+ * Gauss elimination.
+ *
+ * http://www.student.montefiore.ulg.ac.be/~ggilles/C/gauss.c
+ */
+int ES__gauss(double **A, double *b, double *x, int n) {
+     int i, j, k;
+     int imin;
+     double p;
+     double sum, valmin, tump1, tump2;
+     
+     for(k = 0 ; k < n-1 ; k++) {
+        /* Dans un premier temps, on cherche l'élément minimum (non */
+        /* nul) en valeur absolue dans la colonne k et d'indice i   */
+        /* supérieur ou égal à k.                                   */
+        
+        valmin = A[k][k] ; imin = k ;
+        for(i = k+1 ; i < n ; i++)
+        {
+           if (valmin != 0)
+           {
+              if (abs(A[i][k]) < abs(valmin) && A[i][k] != 0)
+              {
+                 valmin = A[i][k] ;
+                 imin = i ;
+              }
+           }
+           else 
+           {
+                 valmin = A[i][k] ;
+                 imin = i ;
+           }     
+        }
+        
+        /* Si l'élément minimum est nul, on peut en déduire */
+        /* que la matrice est singulière. Le pogramme est   */
+        /* alors interrompu.                                */
+        
+        if (valmin == 0.)
+        {
+           return 1;
+        }
+        
+        /* Si la matrice n'est pas singulière, on inverse    */
+        /* les éléments de la ligne imax avec les éléments   */
+        /* de la ligne k. On fait de même avec le vecteur b. */
+        
+        for(j = 0 ; j < n ; j++)
+        {
+           tump1 = A[imin][j] ;
+           A[imin][j] = A[k][j] ;
+           A[k][j] = tump1 ;
+        }
+        
+        tump2 = b[imin] ;
+        b[imin] = b[k] ;
+        b[k] = tump2 ;
+        
+        
+        /* On procède à la réduction de la matrice par la */
+        /* méthode d'élimination de Gauss. */
+        
+        for(i = k+1 ; i < n ; i++)
+        {
+           p = A[i][k]/A[k][k] ;
+           
+           for(j = 0 ; j < n ; j++)
+           {
+              A[i][j] = A[i][j] - p*A[k][j] ;
+           }
+           
+           b[i] = b[i] - p*b[k] ; 
+        }
+     }   
+     
+     /* On vérifie que la matrice n'est toujours pas singulière. */
+     /* Si c'est le cas, on interrompt le programme. */
+     
+     if (A[n-1][n-1] == 0)
+     {
+        return 1;
+     }
+     
+     /* Une fois le système réduit, on obtient une matrice triangulaire */
+     /* supérieure et la résolution du système se fait très simplement. */
+     
+     x[n-1] = b[n-1]/A[n-1][n-1] ;
+     
+     for(i = n-2 ; i > -1 ; i--)
+     {
+           sum = 0 ;
+           
+           for(j = n-1 ; j > i ; j--)
+           {
+              sum = sum + A[i][j]*x[j] ;
+           }
+           x[i] = (b[i] - sum)/A[i][i] ;
+     }
+     
+     return 0;
+}
+
+int ES__remove_duplicates(char** buffer, int num_vars, char** out_buffer) {
+    int num_elements = 0;
+    for(int i = 0; i < num_vars; i++) {
+        int in_array = 0;
+        for(int j = 0; j < num_elements; j++) {
+            if (out_buffer[j] != NULL) {
+                if (strcmp(out_buffer[j], buffer[i]) == 0 || strcmp(buffer[i], "") == 0) {
+                    in_array = 1;
+                    break;
+                }
+            }
+        }
+        if (!in_array) {
+            out_buffer[num_elements++] = buffer[i];
+        }
+    }
+    return num_elements;
+}
+
+void ES_free(Solutions* s) {
+    free(s->values);
+    free(s->names);
+    free(s);
+}
+
+Solutions* ES_solve(Expression** expressions, int num_expressions) {
+    char** buffer = malloc(40 * sizeof(char*));
+    char** out_buffer = malloc(40 * sizeof(char*));
+    int num_vars = 0;
+    
+    for(int i = 0; i < num_expressions; i++) {
+        num_vars += E_get_variables(expressions[i], buffer + num_vars, 40 - num_vars);
+    }
+    
+    int num_elements = ES__remove_duplicates(buffer, num_vars, out_buffer);
+    free(buffer);
+    
+    double** matrix = ES_malloc_matrix(num_elements, num_elements);
+    double* value = malloc(num_elements * sizeof(double));
+    double* solutions = malloc(num_elements * sizeof(double));
+    
+    for(int i = 0; i < num_elements; i++) {
+        for(int j = 0; j < num_elements; j++) {
+            if (strcmp(out_buffer[j], "") == 0) {
+                continue;
+            }
+            matrix[i][j] = E_get_value_for(expressions[i], out_buffer[j]);
+        }
+        value[i] = -E_get_value_for(expressions[i], "");
+    }
+    
+    // ES_show_system(matrix, value, num_elements);
+    
+    ES__gauss(matrix, value, solutions, num_elements);
+    
+    free(value);
+    free(matrix);
+    
+    Solutions* s = malloc(sizeof(Solutions));
+    s->names = out_buffer;
+    s->values = solutions;
+    s->number = num_elements;
+    
+    return s;
+}
 
 void EP_append(Expression* e, ExpressionNode* n) {
     if (e->head == NULL) {
@@ -292,92 +489,107 @@ void EP_append(Expression* e, ExpressionNode* n) {
     temp->next = n;
 }
 
+int EP__split_number(char* token, char* number, char* var) {
+    int var_name = 0;
+    char c;
+    
+    int number_buffer_len = 0;
+    int var_len = 0;
+    int i = 0;
+    
+    do {
+        c = token[i];
+        i++;
+        if (isspace(c)) {
+            continue;
+        }
+        
+        if (strchr("-+0123456789.", c) != NULL && var_name == 0) {
+            number[number_buffer_len++] = c;
+        } else {
+            var_name = 1;
+        }
+        if (var_name) {
+            var[var_len++] = c;
+        }
+    } while(c != '\0');
+    var[var_len++] = '\0';
+    number[number_buffer_len++] = '\0';
+    
+    return 0;
+}
+
 /**
  * Parses an expression from a string.
  */
-int EP_parse(Expression* e, char* expression) {
-    E_free(e);
+Expression* EP_parse(char* expression) {
+    Expression* e = malloc(sizeof(Expression));
     e->should_free_strings = 1;
     e->should_free_zero = 1;
-
-    char buffer[EP_BUFFER_LEN] = {0};
-    int tmp_len = 0;
+    e->head = NULL;
     
-    ExpressionNode* temp_expression = malloc(sizeof(ExpressionNode));
-    temp_expression->next = NULL;
-    temp_expression->num = 0;
-    temp_expression->var = "";
+    char* expression_copy = malloc(strlen(expression) + 1);
+    strcpy(expression_copy, expression);
+    
+    char* token = strtok(expression_copy, "+");
+    
+    char* var = malloc(40);
+    double number = 0;
+    char* num = malloc(40);
+    
+    while (token != NULL) {
+        EP__split_number(token, num, var);
 
-    int state = EP_STATE_READ_NUM;
-    int expression_len = strlen(expression);
-    for(int i = 0; i <= expression_len; i++) {
-        switch(state) {
-            case EP_STATE_READ_NUM:
-                if (!isspace(expression[i]))
-                    if (strchr("-+0123456789.", expression[i]) == NULL) {
-                        buffer[tmp_len++] = '\0';
-                        sscanf(buffer, "%lg", &(temp_expression->num));
-                        
-                        memset(buffer, 0, EP_BUFFER_LEN);
-                        state = EP_STATE_READ_VAR;
-                        tmp_len = 0;
-                        i--;
-                    } else {
-                        buffer[tmp_len++] = expression[i];
-                    }
-                if(i == expression_len) {
-                    buffer[tmp_len++] = '\0';
-                    sscanf(buffer, "%lg", &(temp_expression->num));
-                    temp_expression->var = malloc(1);
-                    *(temp_expression->var) = '\0';
-                    EP_append(e, temp_expression);
-                    temp_expression = NULL;
-                }
-                break;
-            case EP_STATE_READ_VAR:
-                if (!isspace(expression[i]))
-                    if (expression[i] == '+' || expression[i] == '-') {
-                        
-                        temp_expression->var = malloc(strlen(buffer) + 1);
-                        strcpy(temp_expression->var, buffer);
-                        EP_append(e, temp_expression);
-                        
-                        temp_expression = malloc(sizeof(ExpressionNode));
-                        temp_expression->next = NULL;
-                        temp_expression->num = 0;
-                        temp_expression->var = "";
-                        
-                        memset(buffer, 0, EP_BUFFER_LEN);
-                        state = EP_STATE_READ_NUM;
-                        tmp_len = 0;
-                        
-                        if (expression[i] == '-') {
-                            buffer[tmp_len++] = '-';
-                        }
-                        
-                    } else {
-                        buffer[tmp_len++] = expression[i];
-                    }
-                if(i == expression_len) {
-                    temp_expression->var = malloc(strlen(buffer) + 1);
-                    strcpy(temp_expression->var, buffer);
-                    EP_append(e, temp_expression);
-                    temp_expression = NULL;
-                }
-                break;
+        ExpressionNode* temp_expression = malloc(sizeof(ExpressionNode));
+        temp_expression->next = NULL;
+
+        if (strcmp(num, "-") == 0) {
+            temp_expression->num = -1;
+        } else if (strcmp(num, "") == 0 || strcmp(num, "+") == 0) {
+            temp_expression->num = 1;
+        } else {
+            sscanf(num, "%lg", &(temp_expression->num));
         }
+        
+        char* new_var = malloc(strlen(var) + 1);
+        strcpy(new_var, var);
+        temp_expression->var = new_var;
+        EP_append(e, temp_expression);
+        
+        
+        // printf("%s => '%s' : '%s'\n", token, num, var);
+        token = strtok(NULL, "+");
     }
+    
+    free(expression_copy);
+    free(var);
+    free(num);
+    return e;
 }
 
+
+
 int main() {
-    Expression e = {NULL, 0, 0};
+    Expression** e_list = malloc(sizeof(Expression*) * 5);
+    e_list[0] = EP_parse("xB + xA");
+    e_list[1] = EP_parse("yB + yA");
+    e_list[2] = EP_parse("-30000 + zB");
+    e_list[3] = EP_parse("-27000000 + -1800yA");
+    e_list[4] = EP_parse("1900000 + 1800xA");
+
+    Solutions* s = ES_solve(e_list, 5);
     
-    EP_parse(&e, "3x + 12y -7z -2");
-    E_debug(&e);
-    char buffer[60];
-    E_get_display(&e, buffer, 60);
-    printf("%s\n", buffer);
+    for(int i = 0; i < s->number; i++) {
+        printf("%s = %lg\n", s->names[i], s->values[i]);
+    }
     
-    E_free(&e);
+    ES_free(s);
+    
+    for(int i = 0; i < 5; i++) {
+        E_free(e_list[i]);
+    }
+    
+    free(e_list);
+
     return 0;
 }
