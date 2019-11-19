@@ -14,8 +14,6 @@ struct expressionNode {
 typedef struct expression Expression;
 struct expression {
     ExpressionNode* head;
-    int should_free_strings;
-    int should_free_zero;
 };
 
 typedef struct solutions Solutions;
@@ -23,6 +21,23 @@ struct solutions {
     char** names;
     double* values;
     int number;
+};
+
+typedef struct vecteur Vecteur;
+struct vecteur {
+    Expression* x;
+    Expression* y;
+    Expression* z;
+};
+
+typedef struct torseur Torseur;
+struct torseur {
+    int free_strings;
+    char* name;
+    char* point;
+    Vecteur p;
+    Vecteur r;
+    Vecteur m;
 };
 
 /**
@@ -41,6 +56,42 @@ int EN_get_individual_display(ExpressionNode* self, char* buffer, size_t buffer_
         }
     }
     return 0;
+}
+
+/**
+ * Copy an expression
+ */
+Expression* E_copy(Expression* e) {
+    Expression* out = malloc(sizeof(Expression));
+    
+    // Check for null
+    if (e->head == NULL) {
+        out->head = NULL;
+        return out;
+    }
+    
+    // Copy head
+    ExpressionNode* new_head = malloc(sizeof(ExpressionNode));
+    new_head->num = e->head->num;
+    new_head->var = malloc(strlen(e->head->var) + 1);
+    strcpy(new_head->var, e->head->var);
+    
+    // Copy the rest
+    ExpressionNode* p = new_head;
+    ExpressionNode* temp = e->head->next;
+    
+    while(temp != NULL) {
+        p->next = malloc(sizeof(ExpressionNode));
+        p = p->next;
+        p->num = temp->num;
+        p->var = malloc(strlen(temp->var) + 1);
+        strcpy(p->var, temp->var);
+        
+        temp = temp->next;
+    }
+    p->next = NULL;
+    out->head = new_head;
+    return out;
 }
 
 /**
@@ -100,10 +151,15 @@ int E_multiply(Expression* self, Expression* other) {
         while(current != NULL) {
             if(strcmp(temp->var, "") == 0) {
                 temp->num *= current->num;
-                temp->var = current->var;
+                
+                free(temp->var);
+                temp->var = malloc(strlen(current->var) + 1);
+                strcpy(temp->var, current->var);
+                
             } else if(strcmp(current->var, "") == 0) {
-                temp->num = current->num;
+                temp->num *= current->num;
             } else {
+                printf("MASHALLAH");
                 return 1;
             }
             current = current->next;
@@ -115,27 +171,9 @@ int E_multiply(Expression* self, Expression* other) {
 }
 
 /**
- * Add an expression to another.
- */
-int E_add(Expression* self, Expression* other) {
-    ExpressionNode* temp = self->head;
-    if(temp == NULL) {
-        self->head = other->head;
-        return 0;
-    }
-    
-    while(temp->next != NULL) {
-        temp = temp->next;
-    }
-    
-    temp->next = other->head;
-    return 0;
-}
-
-/**
  * Symplify by adding same var ExpressionNodes.
  */
-int E__simplify_add(Expression* self, int should_free) {
+int E__simplify_add(Expression* self) {
     ExpressionNode* temp = self->head;
     
     while(temp != NULL) {
@@ -146,9 +184,10 @@ int E__simplify_add(Expression* self, int should_free) {
             if(strcmp(temp->var, current->var) == 0) {
                 temp->num += current->num;
                 current->num = 0;
-                if(should_free)
-                    free(current->var);
-                current->var = "";
+                /*
+                free(current->var);
+                current->var = malloc(1);*/
+                *current->var = '\0';
             }
             current = current->next;
         }
@@ -160,7 +199,7 @@ int E__simplify_add(Expression* self, int should_free) {
 /**
  * Symplify by removing ExpressionNodes with num = 0.
  */
-int E__simplify_remove_zero(Expression* self, int should_free) {
+int E__simplify_remove_zero(Expression* self) {
     ExpressionNode* temp = self->head;
     ExpressionNode* prev = NULL;
     
@@ -169,23 +208,25 @@ int E__simplify_remove_zero(Expression* self, int should_free) {
             if(prev == NULL) {
                 if(temp->next == NULL) {
                     temp->num = 0;
-                    temp->var = "";
+                    free(temp->var);
+                    temp->var = malloc(1);
+                    *temp->var = '\0';
                 } else {
                     self->head = temp->next;
                     
-                    if(should_free)
-                        free(temp);
+                    free(temp->var);
+                    free(temp);
                 }
             } else {
                 if(temp->next == NULL) {
-                    if(should_free)
-                        free(prev->next);
+                    free(prev->next->var);
+                    free(prev->next);
                     prev->next = NULL;
                 } else {
                     prev->next = temp->next;
                     
-                    if(should_free)
-                        free(temp);
+                    free(temp->var);
+                    free(temp);
                 }
                 temp = prev;
                 prev = NULL;
@@ -203,8 +244,8 @@ int E__simplify_remove_zero(Expression* self, int should_free) {
  * Simplify and expression.
  */
 int E_simplify(Expression* self) {
-    E__simplify_add(self, self->should_free_strings);
-    E__simplify_remove_zero(self, self->should_free_zero);
+    E__simplify_add(self);
+    E__simplify_remove_zero(self);
     return 0;
 }
 
@@ -257,17 +298,38 @@ int E_get_variables(Expression* self, char** var_names, int max_vars) {
  * Free everything.
  */
 int E_free(Expression* self) {
-    if (self->head == NULL)
+    if (self->head == NULL) {
+        free(self);
         return 1;
+    }
     ExpressionNode* curr = self->head;
     while((curr = self->head) != NULL) {
         self->head = self->head->next;
         
-        if (self->should_free_strings)
-            free(curr->var);
+        free(curr->var);
         free(curr);
     }
     free(self);
+    return 0;
+}
+
+/**
+ * Add an expression to another.
+ */
+int E_add(Expression* self, Expression* other) {
+    ExpressionNode* temp = self->head;
+    if(temp == NULL) {
+        self->head = other->head;
+        return 0;
+    }
+    
+    while(temp->next != NULL) {
+        temp = temp->next;
+    }
+    
+    temp->next = other->head;
+    
+    other->head = NULL;
     return 0;
 }
 
@@ -276,9 +338,9 @@ int E_free(Expression* self) {
  */
 void E_debug(Expression* self) {
     ExpressionNode* temp = self->head;
-    printf("FS %d FZ %d\n", self->should_free_strings, self->should_free_zero);
+    printf("FS %d FZ %d\n");
     while(temp != NULL) {
-        printf("  N %s M %g\n", temp->var, temp->num);
+        printf("%p  N %p=>%s M %p=>%g\n", temp, temp->var, temp->var, &temp->num, temp->num);
         temp = temp->next;
     }
 }
@@ -524,8 +586,6 @@ int EP__split_number(char* token, char* number, char* var) {
  */
 Expression* EP_parse(char* expression) {
     Expression* e = malloc(sizeof(Expression));
-    e->should_free_strings = 1;
-    e->should_free_zero = 1;
     e->head = NULL;
     
     char* expression_copy = malloc(strlen(expression) + 1);
@@ -557,7 +617,7 @@ Expression* EP_parse(char* expression) {
         EP_append(e, temp_expression);
         
         
-        // printf("%s => '%s' : '%s'\n", token, num, var);
+        printf("%s => '%s' : '%s'\n", token, num, new_var);
         token = strtok(NULL, "+");
     }
     
@@ -567,29 +627,198 @@ Expression* EP_parse(char* expression) {
     return e;
 }
 
+/**
+ * Move a torseur to 0;0;0
+ *
+ *      Mo = Ma + OA ^ R
+ *
+ *      yOA yR
+ *      zOA zR
+ *      xOA xR
+ *      yOA yR
+ *
+ *      x = yOA * zR - zOA * yR
+ *      y = zOA * xR - xOA * zR
+ *      z = xOA * yR - yOA * xR
+ *
+ *      xMb = xMa + yOA * zR - zOA * yR
+ *      yMb = yMa + zOA * xR - xOA * zR
+ *      zMb = zMa + xOA * yR - yOA * xR
+ */
+void T_move_to_origin(Torseur* t) {
+    
+    Expression *point_x, *point_y, *point_z;
+    Expression *tor_x, *tor_y, *tor_z;
+    
+    // Calculation for:
+    // xMb = xMa + yOA * zR - zOA * yR
+    point_z = E_copy(t->p.z);   // zOA
+    point_y = E_copy(t->p.y);   // yOA
+    tor_z = E_copy(t->r.z);     // zR
+    tor_y = E_copy(t->r.y);     // yR
+    
+    E_multiply(point_z, tor_y);             // zOA * yR
+    E_multiply_scalar(point_z, -1.0);       // -1(zOA * yR)
+    
+    E_multiply(point_y, tor_z);             // yOA * zR
+    E_add(point_y, point_z);                // (yOA * zR) + -1(zOA * yR)
+    
+    E_add(t->m.x, point_y);                 // xMb = xMa + (yOA * zR) + -1(zOA * yR)
+    
+    E_simplify(t->m.x);
+    
+    E_free(point_z);
+    E_free(point_y);
+    E_free(tor_z);
+    E_free(tor_y);
+    
+    // Calculation for:
+    // yMb = yMa + zOA * xR - xOA * zR
+    point_x = E_copy(t->p.x);   // xOA
+    point_z = E_copy(t->p.z);   // zOA
+    tor_x = E_copy(t->r.x);     // xR
+    tor_z = E_copy(t->r.z);     // zR
+    
+    E_multiply(point_x, tor_z);             // xOA * zR
+    E_multiply_scalar(point_x, -1.0);       // -1(xOA * zR)
+    
+    E_multiply(point_z, tor_x);             // zOA * xR
+    E_add(point_z, point_x);                // (zOA * xR) + -1(xOA * zR)
+    
+    E_add(t->m.y, point_z);                 // yMb = yMa + (zOA * xR) + -1(xOA * zR)
+    E_simplify(t->m.y);
+    
+    E_free(point_x);
+    E_free(point_z);
+    E_free(tor_x);
+    E_free(tor_z);
+    
+    // Calculation for:
+    // zMb = zMa + xOA * yR - yOA * xR
+    point_y = E_copy(t->p.y);   // yOA
+    point_x = E_copy(t->p.x);   // xOA
+    tor_y = E_copy(t->r.y);     // yR
+    tor_x = E_copy(t->r.x);     // xR
+    
+    E_multiply(point_y, tor_x);             // yOA * xR
+    E_multiply_scalar(point_y, -1.0);       // -1(yOA * xR)
+    
+    E_multiply(point_x, tor_y);             // xOA * yR
+    E_add(point_x, point_y);                // (xOA * yR) + -1(yOA * xR)
+    
+    E_add(t->m.y, point_x);                 // yMb = yMa + (zOA * xR) + -1(xOA * zR)
+    E_simplify(t->m.y);
+    
+    E_free(point_y);
+    E_free(point_x);
+    E_free(tor_y);
+    E_free(tor_x);
+    
+    E_multiply_scalar(t->p.x, 0);
+    E_simplify(t->p.x);
+    E_multiply_scalar(t->p.y, 0);
+    E_simplify(t->p.y);
+    E_multiply_scalar(t->p.z, 0);
+    E_simplify(t->p.z);
+}
+
+void T_print(Torseur* t) {
+    printf(" == Torseur: %s ==\n", t->name);
+    printf("  Point %s:\n", t->point);
+    char buffer[50];
+    E_get_display(t->p.x, buffer, 50);
+    printf("   x: %s\n", buffer);
+    E_get_display(t->p.y, buffer, 50);
+    printf("   y: %s\n", buffer);
+    E_get_display(t->p.z, buffer, 50);
+    printf("   z: %s\n", buffer);
+    printf("  Résultante:\n");
+    E_get_display(t->r.x, buffer, 50);
+    printf("   x: %s\n", buffer);
+    E_get_display(t->r.y, buffer, 50);
+    printf("   y: %s\n", buffer);
+    E_get_display(t->r.z, buffer, 50);
+    printf("   z: %s\n", buffer);
+    printf("  Moment:\n");
+    E_get_display(t->m.x, buffer, 50);
+    printf("   x: %s\n", buffer);
+    E_get_display(t->m.y, buffer, 50);
+    printf("   y: %s\n", buffer);
+    E_get_display(t->m.z, buffer, 50);
+    printf("   z: %s\n", buffer);
+}
+
+Solutions* T_solver(Torseur** list, int number) {
+    Expression** e_list = malloc(sizeof(Expression*) * 6);
+    for(int i = 0; i < number; i++) {
+        Torseur* t = list[i];
+        T_move_to_origin(t);
+    }
+}
+
+
+void T_free(Torseur* t) {
+    if (t->free_strings) {
+        free(t->name);
+        free(t->point);
+    }
+    
+    // E_debug(t->p.x);
+    E_free(t->p.x);
+    E_free(t->p.y);
+    E_free(t->p.z);
+    E_free(t->r.x);
+    E_free(t->r.y);
+    E_free(t->r.z);
+    E_free(t->m.x);
+    E_free(t->m.y);
+    E_free(t->m.z);
+    
+    free(t);
+}
+
+/*
+typedef struct torseur Torseur;
+struct torseur {
+    int free_strings;
+    char* name;
+    char* point;
+    Vecteur p;
+    Vecteur r;
+    Vecteur m;
+};
+*/
+
+int main() {
+    
+    Torseur* t = malloc(sizeof(Torseur));
+    t->free_strings = 0;
+    t->name = "T";
+    t->point = "A";
+    
+    t->p.x = EP_parse("10");
+    t->p.y = EP_parse("20");
+    t->p.z = EP_parse("30");
+    
+    t->r.x = EP_parse("40");
+    t->r.y = EP_parse("50");
+    t->r.z = EP_parse("60");
+    
+    t->m.x = EP_parse("70");
+    t->m.y = EP_parse("80");
+    t->m.z = EP_parse("90");
+    
+    T_print(t);
+    T_move_to_origin(t);
+    T_print(t);
+    T_free(t);
+    
+    return 0;
+}
 
 
 int main() {
-    Expression** e_list = malloc(sizeof(Expression*) * 5);
-    e_list[0] = EP_parse("xB + xA");
-    e_list[1] = EP_parse("yB + yA");
-    e_list[2] = EP_parse("-30000 + zB");
-    e_list[3] = EP_parse("-27000000 + -1800yA");
-    e_list[4] = EP_parse("1900000 + 1800xA");
-
-    Solutions* s = ES_solve(e_list, 5);
     
-    for(int i = 0; i < s->number; i++) {
-        printf("%s = %lg\n", s->names[i], s->values[i]);
-    }
-    
-    ES_free(s);
-    
-    for(int i = 0; i < 5; i++) {
-        E_free(e_list[i]);
-    }
-    
-    free(e_list);
-
-    return 0;
 }
+
+
