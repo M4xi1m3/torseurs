@@ -20,6 +20,7 @@ struct torseur {
     Vecteur p;
     Vecteur r;
     Vecteur m;
+    Expression** _expressions;
 };
 
 /**
@@ -143,12 +144,71 @@ void T_print(Torseur* t) {
     printf("   z: %s\n", buffer);
 }
 
-Solutions* T_solver(Torseur** list, int number) {
+void T_fill_expressions(Torseur* t) {
+    t->_expressions = malloc(6 * sizeof(Expression*));
+    
+    t->_expressions[0] = t->r.x;
+    t->_expressions[1] = t->r.y;
+    t->_expressions[2] = t->r.z;
+    t->_expressions[3] = t->m.x;
+    t->_expressions[4] = t->m.y;
+    t->_expressions[5] = t->m.z;
+}
+
+/*
+typedef struct torseur Torseur;
+struct torseur {
+    int free_strings;
+    char* name;
+    char* point;
+    Vecteur p;
+    Vecteur r;
+    Vecteur m;
+    Expression** _expressions;
+};
+*/
+
+Solutions* T_solve(Torseur** list, int number) {
     Expression** e_list = malloc(sizeof(Expression*) * 6);
+    
+    // Malloc list of expressions.
+    for(int i = 0; i < 6; i++) {
+        e_list[i] = malloc(sizeof(Expression));
+        e_list[i]->head = NULL;
+    }
+    
+    // Move everything to 0;0;0
     for(int i = 0; i < number; i++) {
         Torseur* t = list[i];
         T_move_to_origin(t);
+        T_fill_expressions(t);
     }
+    
+    // Sum the expressions.
+    for(int i = 0; i < 6; i++) {
+        for(int j = 0; j < number; j++) {
+            E_add(e_list[i], list[j]->_expressions[i]);
+        }
+    }
+    
+    // Symplify everything.
+    for(int i = 0; i < 6; i++) {
+        E_simplify(e_list[i]);
+    }
+    
+    // Free the expression lists in the screws.
+    for(int i = 0; i < number; i++) {
+        free(list[i]->_expressions);
+    }
+    
+    Solutions* s = ES_solve(e_list, 6);
+    
+    // Free everythins.
+    for(int i = 0; i < 6; i++) {
+        free(e_list[i]);
+    }
+    free(e_list);
+    return s;
 }
 
 
@@ -172,18 +232,6 @@ void T_free(Torseur* t) {
     free(t);
 }
 
-/*
-typedef struct torseur Torseur;
-struct torseur {
-    int free_strings;
-    char* name;
-    char* point;
-    Vecteur p;
-    Vecteur r;
-    Vecteur m;
-};
-*/
-
 int main() {
     
     Torseur* t = malloc(sizeof(Torseur));
@@ -203,10 +251,16 @@ int main() {
     t->m.y = EP_parse("80");
     t->m.z = EP_parse("90");
     
+    Torseur** tl = malloc(sizeof(Torseur*));
+    tl[0] = t;
+    
     T_print(t);
-    T_move_to_origin(t);
-    T_print(t);
+    Solutions* s = T_solve(tl, 1);
+    
     T_free(t);
+    free(tl);
+    
+    ES_free(s);
     
     return 0;
 }
