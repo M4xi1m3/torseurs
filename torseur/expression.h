@@ -8,6 +8,8 @@ struct expression {
     ExpressionNode* head;
 };
 
+// Append an ExpressionNode to an Expression.
+void E_append(Expression* e, ExpressionNode* n);
 // Copy an expression
 Expression* E_copy(Expression* e);
 // Get string representing whole expression.

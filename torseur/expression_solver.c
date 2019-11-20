@@ -153,6 +153,8 @@ int ES__remove_duplicates(char** buffer, int num_vars, char** out_buffer) {
         }
         if (!in_array) {
             out_buffer[num_elements++] = buffer[i];
+        } else {
+            free(buffer[i]);
         }
     }
     return num_elements;
@@ -163,8 +165,22 @@ int ES__remove_duplicates(char** buffer, int num_vars, char** out_buffer) {
  */
 void ES_free(Solutions* s) {
     free(s->values);
+    
+    for(int i = 0; i < s->number; i++) {
+        free(s->names[i]);
+    }
+    
     free(s->names);
     free(s);
+}
+
+/**
+ * Print solutions
+ */
+void ES_print(Solutions* s) {
+    for(int i = 0; i < s->number; i++) {
+        printf("%s = %lg\n", s->names[i], s->values[i]);
+    }
 }
 
 /**
@@ -174,6 +190,10 @@ Solutions* ES_solve(Expression** expressions, int num_expressions) {
     char** buffer = malloc(40 * sizeof(char*));
     char** out_buffer = malloc(40 * sizeof(char*));
     int num_vars = 0;
+    
+    for(int i = 0; i < num_expressions; i++) {
+        E_simplify(expressions[i]);
+    }
     
     for(int i = 0; i < num_expressions; i++) {
         num_vars += E_get_variables(expressions[i], buffer + num_vars, 40 - num_vars);
@@ -204,6 +224,7 @@ Solutions* ES_solve(Expression** expressions, int num_expressions) {
     free(matrix);
     
     Solutions* s = malloc(sizeof(Solutions));
+    
     s->names = out_buffer;
     s->values = solutions;
     s->number = num_elements;

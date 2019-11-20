@@ -16,5 +16,7 @@ void ES_show_system(double **A, double *b, int n);
 void ES_free(Solutions* s);
 // Solve a system of linear equations.
 Solutions* ES_solve(Expression** expressions, int num_expressions);
+// Print solutions.
+void ES_print(Solutions* s);
 
 #endif

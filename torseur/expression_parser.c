@@ -7,22 +7,6 @@
 #include <ctype.h>
 
 /**
- * Append an ExpressionNode at the end of an Expression.
- */
-void EP__append(Expression* e, ExpressionNode* n) {
-    if (e->head == NULL) {
-        e->head = n;
-        return;
-    }
-
-    ExpressionNode* temp = e->head;
-    while(temp->next != NULL) {
-        temp = temp->next;
-    }
-    temp->next = n;
-}
-
-/**
  * Split a token into the number and the var part.
  */
 int EP__split_number(char* token, char* number, char* var) {
@@ -88,10 +72,9 @@ Expression* EP_parse(char* expression) {
         char* new_var = malloc(strlen(var) + 1);
         strcpy(new_var, var);
         temp_expression->var = new_var;
-        EP__append(e, temp_expression);
+        E_append(e, temp_expression);
         
-        
-        printf("%s => '%s' : '%s'\n", token, num, new_var);
+        // printf("%s => '%s' : '%s'\n", token, num, new_var);
         token = strtok(NULL, "+");
     }
     

@@ -5,6 +5,23 @@
 #include <stdio.h>
 
 /**
+ * Append an ExpressionNode at the end of an Expression.
+ */
+void E_append(Expression* e, ExpressionNode* n) {
+    if (e->head == NULL) {
+        e->head = n;
+        return;
+    }
+
+    ExpressionNode* temp = e->head;
+    
+    while(temp->next != NULL) {
+        temp = temp->next;
+    }
+    temp->next = n;
+}
+
+/**
  * Copy an expression
  */
 Expression* E_copy(Expression* e) {
@@ -144,53 +161,56 @@ int E__simplify_add(Expression* self) {
 /**
  * Symplify by removing ExpressionNodes with num = 0.
  */
-int E__simplify_remove_zero(Expression* self) {
-    ExpressionNode* temp = self->head;
-    ExpressionNode* prev = NULL;
-    
-    while(temp != NULL) {
-        if(temp->num == 0) {
-            if(prev == NULL) {
-                if(temp->next == NULL) {
-                    temp->num = 0;
-                    free(temp->var);
-                    temp->var = malloc(1);
-                    *temp->var = '\0';
-                } else {
-                    self->head = temp->next;
-                    
-                    free(temp->var);
-                    free(temp);
-                }
-            } else {
-                if(temp->next == NULL) {
-                    free(prev->next->var);
-                    free(prev->next);
-                    prev->next = NULL;
-                } else {
-                    prev->next = temp->next;
-                    
-                    free(temp->var);
-                    free(temp);
-                }
-                temp = prev;
-                prev = NULL;
-                continue;
-            }
-        }
-        prev = temp;
-        temp = temp->next;
+int E__simplify_remove_zero(Expression* e) {
+    // E_debug(e);
+    // Store head node 
+    ExpressionNode* temp = e->head, *prev; 
+
+    if (e->head == NULL) {
+        e->head = malloc(sizeof(ExpressionNode));
+        e->head->next = NULL;
+        e->head->num = 0;
+        e->head->var = malloc(1);
+        *e->head->var = '\0';
+        return 1;
     }
     
-    return 0;
+    if (e->head->next == NULL) {
+        return 1;
+    }
+
+    // If head node itself holds the key to be deleted 
+    if (temp != NULL && temp->num == 0) { 
+        e->head = temp->next;     // Changed head
+        free(temp->var);
+        free(temp);               // free old head 
+        return 0; 
+    } 
+  
+    // Search for the key to be deleted, keep track of the 
+    // previous node as we need to change 'prev->next' 
+    while (temp != NULL && temp->num != 0) { 
+        prev = temp; 
+        temp = temp->next; 
+    } 
+  
+    // If key was not present in linked list 
+    if (temp == NULL) return 1; 
+  
+    // Unlink the node from linked list 
+    prev->next = temp->next; 
+    
+    free(temp->var);
+    free(temp);  // Free memory 
 }
+
 
 /**
  * Simplify and expression.
  */
 int E_simplify(Expression* self) {
     E__simplify_add(self);
-    E__simplify_remove_zero(self);
+    while(!E__simplify_remove_zero(self));
     return 0;
 }
 
@@ -230,7 +250,8 @@ int E_get_variables(Expression* self, char** var_names, int max_vars) {
             if (num_vars >= max_vars)
                 return -1;
             
-            var_names[num_vars] = temp->var;
+            var_names[num_vars] = malloc(strlen(temp->var) + 1);
+            strcpy(var_names[num_vars], temp->var);
             num_vars++;
         }
         
@@ -262,9 +283,11 @@ int E_free(Expression* self) {
  * Add an expression to another.
  */
 int E_add(Expression* self, Expression* other) {
+    Expression* copy = E_copy(other);
+    
     ExpressionNode* temp = self->head;
     if(temp == NULL) {
-        self->head = other->head;
+        self->head = copy->head;
         return 0;
     }
     
@@ -272,9 +295,10 @@ int E_add(Expression* self, Expression* other) {
         temp = temp->next;
     }
     
-    temp->next = other->head;
+    temp->next = copy->head;
     
-    other->head = NULL;
+    copy->head = NULL;
+    E_free(copy);
     return 0;
 }
 

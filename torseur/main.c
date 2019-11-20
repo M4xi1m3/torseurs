@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "expression.h"
 #include "expression_solver.h"
@@ -121,7 +122,7 @@ void T_move_to_origin(Torseur* t) {
 void T_print(Torseur* t) {
     printf(" == Torseur: %s ==\n", t->name);
     printf("  Point %s:\n", t->point);
-    char buffer[50];
+    char buffer[100];
     E_get_display(t->p.x, buffer, 50);
     printf("   x: %s\n", buffer);
     E_get_display(t->p.y, buffer, 50);
@@ -175,6 +176,7 @@ Solutions* T_solve(Torseur** list, int number) {
     for(int i = 0; i < 6; i++) {
         e_list[i] = malloc(sizeof(Expression));
         e_list[i]->head = NULL;
+        E_simplify(e_list[i]);
     }
     
     // Move everything to 0;0;0
@@ -196,16 +198,18 @@ Solutions* T_solve(Torseur** list, int number) {
         E_simplify(e_list[i]);
     }
     
+    Solutions* s = ES_solve(e_list, 6);
+    
+    
     // Free the expression lists in the screws.
     for(int i = 0; i < number; i++) {
         free(list[i]->_expressions);
     }
     
-    Solutions* s = ES_solve(e_list, 6);
     
     // Free everythins.
     for(int i = 0; i < 6; i++) {
-        free(e_list[i]);
+        E_free(e_list[i]);
     }
     free(e_list);
     return s;
@@ -232,34 +236,109 @@ void T_free(Torseur* t) {
     free(t);
 }
 
+char* T_strcpy_malloc(char* buffer) {
+    char* out = malloc(strlen(buffer) + 1);
+    strcpy(out, buffer);
+    return out;
+}
+
+Torseur** T_input(int* num) {
+    *num = 0;
+    char buffer[50];
+    
+    printf("Number: ");
+    scanf("%d", num);
+    getchar();
+    
+    Torseur** tl = malloc(sizeof(Torseur*) * (*num));
+    
+    for(int i = 0; i < (*num); i++) {
+        tl[i] = malloc(sizeof(Torseur));
+        
+        printf("Nom: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->name = T_strcpy_malloc(buffer);
+        
+        printf("Position: \n");
+        printf("Point: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->point = T_strcpy_malloc(buffer);
+        
+        printf("x: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->p.x = EP_parse(buffer);
+        printf("y: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->p.y = EP_parse(buffer);
+        printf("z: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->p.z = EP_parse(buffer);
+        
+        printf("Composantes: \n");
+        
+        printf("x: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->r.x = EP_parse(buffer);
+        printf("y: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->r.y = EP_parse(buffer);
+        printf("z: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->r.z = EP_parse(buffer);
+        
+        printf("l: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->m.x = EP_parse(buffer);
+        printf("m: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->m.y = EP_parse(buffer);
+        printf("n: ");
+        scanf("%[^\n]", buffer);
+        getchar();
+        tl[i]->m.z = EP_parse(buffer);
+    }
+    
+    return tl;
+}
+/*
 int main() {
+    Expression* e = EP_parse("3x + 2y + 1 + 1 + -23y");
+    E_debug(e);
+    E_simplify(e);
+    E_debug(e);
+    E_free(e);
+    return 0;
+}
+*/
+
+int main() {
+    int num = 0;
+    Torseur** tl = T_input(&num);
     
-    Torseur* t = malloc(sizeof(Torseur));
-    t->free_strings = 0;
-    t->name = "T";
-    t->point = "A";
+    // for(int i = 0; i < num; i++) {
+    //     T_print(tl[i]);
+    // }
     
-    t->p.x = EP_parse("10");
-    t->p.y = EP_parse("20");
-    t->p.z = EP_parse("30");
+    Solutions* s = T_solve(tl, num);
     
-    t->r.x = EP_parse("40");
-    t->r.y = EP_parse("50");
-    t->r.z = EP_parse("60");
+    ES_print(s);
     
-    t->m.x = EP_parse("70");
-    t->m.y = EP_parse("80");
-    t->m.z = EP_parse("90");
-    
-    Torseur** tl = malloc(sizeof(Torseur*));
-    tl[0] = t;
-    
-    T_print(t);
-    Solutions* s = T_solve(tl, 1);
-    
-    T_free(t);
+    for(int i = 0; i < num; i++) {
+        T_print(tl[i]);
+        T_free(tl[i]);
+    }
     free(tl);
-    
+    printf("\n");
     ES_free(s);
     
     return 0;
