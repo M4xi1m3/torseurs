@@ -40,100 +40,88 @@ double** ES__malloc_matrix(int rows, int cols) {
  * http://www.student.montefiore.ulg.ac.be/~ggilles/C/gauss.c
  */
 int ES__gauss(double **A, double *b, double *x, int n) {
-     int i, j, k;
-     int imin;
-     double p;
-     double sum, valmin, tump1, tump2;
-     
-     for(k = 0 ; k < n-1 ; k++) {
+    int i, j, k;
+    int imin;
+    double p;
+    double sum, valmin, tump1, tump2;
+
+    for(k = 0 ; k < n-1 ; k++) {
         /* Dans un premier temps, on cherche l'élément minimum (non */
         /* nul) en valeur absolue dans la colonne k et d'indice i   */
         /* supérieur ou égal à k.                                   */
-        
+
         valmin = A[k][k] ; imin = k ;
-        for(i = k+1 ; i < n ; i++)
-        {
-           if (valmin != 0)
-           {
-              if (abs(A[i][k]) < abs(valmin) && A[i][k] != 0)
-              {
-                 valmin = A[i][k] ;
-                 imin = i ;
-              }
-           }
-           else 
-           {
-                 valmin = A[i][k] ;
-                 imin = i ;
-           }     
+        for(i = k + 1; i < n; i++) {
+            if (valmin != 0) {
+                if (abs(A[i][k]) < abs(valmin) && A[i][k] != 0) {
+                    valmin = A[i][k];
+                    imin = i;
+                }
+            } else {
+                valmin = A[i][k];
+                imin = i;
+            }     
         }
-        
+
         /* Si l'élément minimum est nul, on peut en déduire */
         /* que la matrice est singulière. Le pogramme est   */
         /* alors interrompu.                                */
-        
-        if (valmin == 0.)
-        {
-           return 1;
+
+        if (valmin == 0.) {
+            return 1;
         }
-        
+
         /* Si la matrice n'est pas singulière, on inverse    */
         /* les éléments de la ligne imax avec les éléments   */
         /* de la ligne k. On fait de même avec le vecteur b. */
-        
-        for(j = 0 ; j < n ; j++)
-        {
-           tump1 = A[imin][j] ;
-           A[imin][j] = A[k][j] ;
-           A[k][j] = tump1 ;
+
+        for(j = 0 ; j < n ; j++) {
+            tump1 = A[imin][j] ;
+            A[imin][j] = A[k][j] ;
+            A[k][j] = tump1 ;
         }
-        
+
         tump2 = b[imin] ;
         b[imin] = b[k] ;
         b[k] = tump2 ;
-        
-        
+
+
         /* On procède à la réduction de la matrice par la */
         /* méthode d'élimination de Gauss. */
-        
-        for(i = k+1 ; i < n ; i++)
-        {
-           p = A[i][k]/A[k][k] ;
-           
-           for(j = 0 ; j < n ; j++)
-           {
-              A[i][j] = A[i][j] - p*A[k][j] ;
-           }
-           
-           b[i] = b[i] - p*b[k] ; 
+
+        for(i = k+1 ; i < n ; i++) {
+            p = A[i][k]/A[k][k] ;
+
+            for(j = 0 ; j < n ; j++) {
+                A[i][j] = A[i][j] - p*A[k][j] ;
+            }
+
+            b[i] = b[i] - p*b[k] ; 
         }
-     }   
-     
-     /* On vérifie que la matrice n'est toujours pas singulière. */
-     /* Si c'est le cas, on interrompt le programme. */
-     
-     if (A[n-1][n-1] == 0)
-     {
+    }   
+
+    /* On vérifie que la matrice n'est toujours pas singulière. */
+    /* Si c'est le cas, on interrompt le programme. */
+
+    if (A[n-1][n-1] == 0) {
         return 1;
-     }
-     
-     /* Une fois le système réduit, on obtient une matrice triangulaire */
-     /* supérieure et la résolution du système se fait très simplement. */
-     
-     x[n-1] = b[n-1]/A[n-1][n-1] ;
-     
-     for(i = n-2 ; i > -1 ; i--)
-     {
-           sum = 0 ;
-           
-           for(j = n-1 ; j > i ; j--)
-           {
-              sum = sum + A[i][j]*x[j] ;
-           }
-           x[i] = (b[i] - sum)/A[i][i] ;
-     }
-     
-     return 0;
+    }
+
+    /* Une fois le système réduit, on obtient une matrice triangulaire */
+    /* supérieure et la résolution du système se fait très simplement. */
+
+    x[n-1] = b[n-1]/A[n-1][n-1] ;
+
+    for(i = n-2 ; i > -1 ; i--) {
+        sum = 0 ;
+
+        for(j = n-1 ; j > i ; j--) {
+            sum = sum + A[i][j]*x[j];
+        }
+        x[i] = (b[i] - sum)/A[i][i];
+    }
+
+    return 0;
 }
 
 /**
@@ -143,9 +131,14 @@ int ES__remove_duplicates(char** buffer, int num_vars, char** out_buffer) {
     int num_elements = 0;
     for(int i = 0; i < num_vars; i++) {
         int in_array = 0;
+        
+        if (strcmp(buffer[i], "") == 0) {
+            in_array = 1;
+        }
+        
         for(int j = 0; j < num_elements; j++) {
             if (out_buffer[j] != NULL) {
-                if (strcmp(out_buffer[j], buffer[i]) == 0 || strcmp(buffer[i], "") == 0) {
+                if (strcmp(out_buffer[j], buffer[i]) == 0) {
                     in_array = 1;
                     break;
                 }
@@ -216,8 +209,6 @@ Solutions* ES_solve(Expression** expressions, int num_expressions) {
         }
         value[i] = -E_get_value_for(expressions[i], "");
     }
-    
-    // ES_show_system(matrix, value, num_elements);
     
     ES__gauss(matrix, value, solutions, num_elements);
     

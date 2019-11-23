@@ -217,7 +217,7 @@ class ExpressionParser:
 class ExpressionSolver:
     @staticmethod
     def __solve_matrix(equations):
-        print(equations);
+        # print(equations);
         #the constants of a system of linear equations are stored in a list for each equation in the system
         """
         for example the system below:
@@ -280,7 +280,7 @@ class ExpressionSolver:
         return dict(zip(variables, ExpressionSolver.__solve_matrix(matrix)));   
 
 def input_number_or_unknown(name, instead = None):
-    val = input(name + ": ");
+    val = input();
     if (val == "?"):
         return instead;
     else:
@@ -292,15 +292,13 @@ def input_torsors():
     _ = input();
 
     while True:
-        name = input("name: ");
+        name = input();
         if (name == ""):
             break;
-        print("Position:");
-        point_name = input("Point: ");
+        point_name = input();
         point_x = ExpressionParser.parse(input_number_or_unknown("x", "x" + point_name));
         point_y = ExpressionParser.parse(input_number_or_unknown("y", "y" + point_name));
         point_z = ExpressionParser.parse(input_number_or_unknown("z", "z" + point_name));
-        print("Composantes:");
         x = ExpressionParser.parse(input_number_or_unknown("x", "x" + name));
         y = ExpressionParser.parse(input_number_or_unknown("y", "y" + name));
         z = ExpressionParser.parse(input_number_or_unknown("z", "z" + name));
@@ -333,14 +331,11 @@ def input_torsors():
         l.simplify();
         m.simplify();
         n.simplify();
-        print(name, (x, y, z, l, m, n))
         torsors.append((x, y, z, l, m, n));
     return torsors;
 
 def main():
     torsors = input_torsors();
-    
-    print();
     
     equations = [Expression(ExpressionNode(0)) for i in range(6)];
     final_equations = [];
@@ -351,13 +346,13 @@ def main():
     
     for i in range(6):
         equations[i].simplify();
-        print(equations[i]);
     
     for i in range(6):
         if (not equations[i].is_zero()):
             final_equations.append(equations[i]);
     
-    print(ExpressionSolver.solve(final_equations));
+    for k, v in ExpressionSolver.solve(final_equations).items():
+        print(k, "=", v);
     
 
 main();

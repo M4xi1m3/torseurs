@@ -41,7 +41,6 @@ void T_move_to_origin(Torseur* t) {
     E_add(point_y, point_z);                // (yOA * zR) + -1(zOA * yR)
     
     E_add(t->m.x, point_y);                 // xMb = xMa + (yOA * zR) + -1(zOA * yR)
-    
     E_simplify(t->m.x);
     
     E_free(point_z);
@@ -83,8 +82,8 @@ void T_move_to_origin(Torseur* t) {
     E_multiply(point_x, tor_y);             // xOA * yR
     E_add(point_x, point_y);                // (xOA * yR) + -1(yOA * xR)
     
-    E_add(t->m.y, point_x);                 // yMb = yMa + (zOA * xR) + -1(xOA * zR)
-    E_simplify(t->m.y);
+    E_add(t->m.z, point_x);                 // yMb = yMa + (zOA * xR) + -1(xOA * zR)
+    E_simplify(t->m.z);
     
     E_free(point_y);
     E_free(point_x);
@@ -169,7 +168,7 @@ Solutions* T_solve(Torseur** list, int number) {
     // Symplify everything.
     for(int i = 0; i < 6; i++) {
         E_simplify(e_list[i]);
-        E_print(e_list[i]);
+        // E_print(e_list[i]);
     }
     
     // Remove zero (important, else we get weird results.)
@@ -183,6 +182,7 @@ Solutions* T_solve(Torseur** list, int number) {
     for(int i = 0; i < 6; i++) {
         if (!E_is_zero(e_list[i]))
             e_final_list[count++] = e_list[i];
+        // E_print(e_list[i]);
     }
     
     Solutions* s = ES_solve(e_final_list, new_buff_size);
