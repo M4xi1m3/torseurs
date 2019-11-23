@@ -26,6 +26,17 @@ class Expression:
     def __init__(self, head = None):
         self.head = head;
 
+    def is_zero(self): # DONE
+        """
+        Check of self == 0;
+        """
+        temp = self.head;
+        
+        while(temp != None):
+            if (temp.num != 0):
+                return False;
+            temp = temp.next;
+        return True;
 
     def get_variables(self): # DONE
         """
@@ -331,17 +342,22 @@ def main():
     
     print();
     
-    equations = [Expression(ExpressionNode(0)) for i in range(5)];
-    
+    equations = [Expression(ExpressionNode(0)) for i in range(6)];
+    final_equations = [];
+
     for torsor in torsors:
-        for i in range(5):
+        for i in range(6):
             equations[i].add(torsor[i]);
     
-    for i in range(5):
+    for i in range(6):
         equations[i].simplify();
         print(equations[i]);
     
-    print(ExpressionSolver.solve(equations));
+    for i in range(6):
+        if (not equations[i].is_zero()):
+            final_equations.append(equations[i]);
+    
+    print(ExpressionSolver.solve(final_equations));
     
 
 main();
