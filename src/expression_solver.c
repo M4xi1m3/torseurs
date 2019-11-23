@@ -187,8 +187,9 @@ void ES_print(Solutions* s) {
  * Solve a system of linear equations.
  */
 Solutions* ES_solve(Expression** expressions, int num_expressions) {
-    char** buffer = malloc(40 * sizeof(char*));
-    char** out_buffer = malloc(40 * sizeof(char*));
+    int buffer_size = num_expressions * num_expressions;
+    char** buffer = malloc(buffer_size * sizeof(char*));
+    char** out_buffer = malloc(buffer_size * sizeof(char*));
     int num_vars = 0;
     
     for(int i = 0; i < num_expressions; i++) {
@@ -196,7 +197,7 @@ Solutions* ES_solve(Expression** expressions, int num_expressions) {
     }
     
     for(int i = 0; i < num_expressions; i++) {
-        num_vars += E_get_variables(expressions[i], buffer + num_vars, 40 - num_vars);
+        num_vars += E_get_variables(expressions[i], buffer + num_vars, buffer_size - num_vars);
     }
     
     int num_elements = ES__remove_duplicates(buffer, num_vars, out_buffer);

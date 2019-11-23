@@ -278,6 +278,8 @@ def input_number_or_unknown(name, instead = None):
 def input_torsors():
     torsors = [];
 
+    _ = input();
+
     while True:
         name = input("name: ");
         if (name == ""):

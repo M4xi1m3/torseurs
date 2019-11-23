@@ -1,28 +1,8 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 
-#include "expression.h"
-#include "expression_solver.h"
-#include "expression_parser.h"
 
-typedef struct vecteur Vecteur;
-struct vecteur {
-    Expression* x;
-    Expression* y;
-    Expression* z;
-};
-
-typedef struct torseur Torseur;
-struct torseur {
-    int free_strings;
-    char* name;
-    char* point;
-    Vecteur p;
-    Vecteur r;
-    Vecteur m;
-    Expression** _expressions;
-};
+#include "torseur.h"
 
 /**
  * Move a torseur to 0;0;0
@@ -119,6 +99,9 @@ void T_move_to_origin(Torseur* t) {
     E_simplify(t->p.z);
 }
 
+/**
+ * Print a torseur
+ */
 void T_print(Torseur* t) {
     printf(" == Torseur: %s ==\n", t->name);
     printf("  Point %s:\n", t->point);
@@ -145,7 +128,7 @@ void T_print(Torseur* t) {
     printf("   z: %s\n", buffer);
 }
 
-void T_fill_expressions(Torseur* t) {
+void T__fill_expressions(Torseur* t) {
     t->_expressions = malloc(6 * sizeof(Expression*));
     
     t->_expressions[0] = t->r.x;
@@ -156,19 +139,9 @@ void T_fill_expressions(Torseur* t) {
     t->_expressions[5] = t->m.z;
 }
 
-/*
-typedef struct torseur Torseur;
-struct torseur {
-    int free_strings;
-    char* name;
-    char* point;
-    Vecteur p;
-    Vecteur r;
-    Vecteur m;
-    Expression** _expressions;
-};
-*/
-
+/**
+ * Solve a system of torseurs
+ */
 Solutions* T_solve(Torseur** list, int number) {
     Expression** e_list = malloc(sizeof(Expression*) * 6);
     
@@ -183,7 +156,7 @@ Solutions* T_solve(Torseur** list, int number) {
     for(int i = 0; i < number; i++) {
         Torseur* t = list[i];
         T_move_to_origin(t);
-        T_fill_expressions(t);
+        T__fill_expressions(t);
     }
     
     // Sum the expressions.
@@ -196,9 +169,23 @@ Solutions* T_solve(Torseur** list, int number) {
     // Symplify everything.
     for(int i = 0; i < 6; i++) {
         E_simplify(e_list[i]);
+        E_print(e_list[i]);
     }
     
-    Solutions* s = ES_solve(e_list, 6);
+    // Remove zero (important, else we get weird results.)
+    int new_buff_size = 0;
+    for(int i = 0; i < 6; i++) {
+        if (!E_is_zero(e_list[i]))
+            new_buff_size++;
+    }
+    Expression** e_final_list = malloc(sizeof(Expression*) * new_buff_size);
+    int count = 0;
+    for(int i = 0; i < 6; i++) {
+        if (!E_is_zero(e_list[i]))
+            e_final_list[count++] = e_list[i];
+    }
+    
+    Solutions* s = ES_solve(e_final_list, new_buff_size);
     
     
     // Free the expression lists in the screws.
@@ -212,10 +199,13 @@ Solutions* T_solve(Torseur** list, int number) {
         E_free(e_list[i]);
     }
     free(e_list);
+    free(e_final_list);
     return s;
 }
 
-
+/**
+ * Free a torseur
+ */
 void T_free(Torseur* t) {
     if (t->free_strings) {
         free(t->name);
@@ -235,114 +225,4 @@ void T_free(Torseur* t) {
     
     free(t);
 }
-
-char* T_strcpy_malloc(char* buffer) {
-    char* out = malloc(strlen(buffer) + 1);
-    strcpy(out, buffer);
-    return out;
-}
-
-Torseur** T_input(int* num) {
-    *num = 0;
-    char buffer[50];
-    
-    printf("Number: ");
-    scanf("%d", num);
-    getchar();
-    
-    Torseur** tl = malloc(sizeof(Torseur*) * (*num));
-    
-    for(int i = 0; i < (*num); i++) {
-        tl[i] = malloc(sizeof(Torseur));
-        
-        printf("Nom: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->name = T_strcpy_malloc(buffer);
-        
-        printf("Position: \n");
-        printf("Point: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->point = T_strcpy_malloc(buffer);
-        
-        printf("x: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->p.x = EP_parse(buffer);
-        printf("y: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->p.y = EP_parse(buffer);
-        printf("z: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->p.z = EP_parse(buffer);
-        
-        printf("Composantes: \n");
-        
-        printf("x: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->r.x = EP_parse(buffer);
-        printf("y: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->r.y = EP_parse(buffer);
-        printf("z: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->r.z = EP_parse(buffer);
-        
-        printf("l: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->m.x = EP_parse(buffer);
-        printf("m: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->m.y = EP_parse(buffer);
-        printf("n: ");
-        scanf("%[^\n]", buffer);
-        getchar();
-        tl[i]->m.z = EP_parse(buffer);
-    }
-    
-    return tl;
-}
-/*
-int main() {
-    Expression* e = EP_parse("3x + 2y + 1 + 1 + -23y");
-    E_debug(e);
-    E_simplify(e);
-    E_debug(e);
-    E_free(e);
-    return 0;
-}
-*/
-
-int main() {
-    int num = 0;
-    Torseur** tl = T_input(&num);
-    
-    // for(int i = 0; i < num; i++) {
-    //     T_print(tl[i]);
-    // }
-    
-    Solutions* s = T_solve(tl, num);
-    
-    ES_print(s);
-    
-    for(int i = 0; i < num; i++) {
-        T_print(tl[i]);
-        T_free(tl[i]);
-    }
-    free(tl);
-    printf("\n");
-    ES_free(s);
-    
-    return 0;
-}
-
-
 

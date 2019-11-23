@@ -57,6 +57,12 @@ Expression* E_copy(Expression* e) {
     return out;
 }
 
+void E_print(Expression* self) {
+    char buffer[50] = {0};
+    E_get_display(self, buffer, 50);
+    printf("%s\n", buffer);
+}
+
 /**
  * Get string representing whole expression.
  */
@@ -96,7 +102,8 @@ int E_multiply_scalar(Expression* self, double scalar) {
     ExpressionNode* temp = self->head;
     
     while(temp != NULL) {
-        temp->num *= scalar;
+        if (temp->num != 0.0)
+            temp->num *= scalar;
         temp = temp->next;
     }
     
@@ -176,11 +183,16 @@ int E__simplify_remove_zero(Expression* e) {
     }
     
     if (e->head->next == NULL) {
+        if ((e->head->num + 0.0) == 0.0) {
+            free(temp->var);
+            temp->var = malloc(1);
+            *temp->var = '\0';
+        }
         return 1;
     }
 
     // If head node itself holds the key to be deleted 
-    if (temp != NULL && temp->num == 0) { 
+    if (temp != NULL && (temp->num + 0.0) == 0.0) { 
         e->head = temp->next;     // Changed head
         free(temp->var);
         free(temp);               // free old head 
@@ -189,7 +201,7 @@ int E__simplify_remove_zero(Expression* e) {
   
     // Search for the key to be deleted, keep track of the 
     // previous node as we need to change 'prev->next' 
-    while (temp != NULL && temp->num != 0) { 
+    while (temp != NULL && (temp->num + 0.0) != 0.0) { 
         prev = temp; 
         temp = temp->next; 
     } 
@@ -227,6 +239,21 @@ double E_get_value_for(Expression* self, char* var) {
         temp = temp->next;
     }
     return 0;
+}
+
+/**
+ * Check if an expression is equal to zero
+ */
+int E_is_zero(Expression* self) {
+    ExpressionNode* temp = self->head;
+    
+    while(temp != NULL) {
+        if (temp->num != 0.0) {
+            return 0;
+        }
+        temp = temp->next;
+    }
+    return 1;
 }
 
 /**
@@ -307,9 +334,9 @@ int E_add(Expression* self, Expression* other) {
  */
 void E_debug(Expression* self) {
     ExpressionNode* temp = self->head;
-    printf("FS %d FZ %d\n");
+    printf(" -- Expression %p\n", self);
     while(temp != NULL) {
-        printf("%p  N %p=>%s M %p=>%g\n", temp, temp->var, temp->var, &temp->num, temp->num);
+        printf("%p  N %p=>%s M %p=>%lg\n", temp, temp->var, temp->var, &temp->num, temp->num);
         temp = temp->next;
     }
 }

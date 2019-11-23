@@ -30,5 +30,9 @@ int E_free(Expression* self);
 int E_add(Expression* self, Expression* other);
 // Printf the shit out of it!
 void E_debug(Expression* self);
+// Print the expression.
+void E_print(Expression* self);
+// Check if an expression is equal to zero
+int E_is_zero(Expression* self);
 
 #endif
