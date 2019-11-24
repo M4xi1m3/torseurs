@@ -52,7 +52,6 @@ Expression* EP_parse(char* expression) {
     char* token = strtok(expression_copy, "+");
     
     char* var = malloc(40);
-    double number = 0;
     char* num = malloc(40);
     
     while (token != NULL) {

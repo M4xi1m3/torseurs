@@ -214,6 +214,7 @@ int E__simplify_remove_zero(Expression* e) {
     
     free(temp->var);
     free(temp);  // Free memory 
+    return 0;
 }
 
 

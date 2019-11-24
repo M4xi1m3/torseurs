@@ -1,5 +1,5 @@
 CC		= gcc
-CFLAGS	= -I. -fsanitize=address -fno-omit-frame-pointer -ffast-math -g
+CFLAGS	= -I. -fsanitize=address -fno-omit-frame-pointer -ffast-math -g -Wall -Werror
 DEPS	= $(wildcard inc/*.c)
 SRC		= $(wildcard src/*.c)
 OBJ		= $(SRC:.c=.o)

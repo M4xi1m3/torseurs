@@ -1,2 +1,6 @@
 *.o
 *.elf
+*.src
+*.8xp
+*.bin
+*.map
