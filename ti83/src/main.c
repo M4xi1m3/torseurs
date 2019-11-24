@@ -258,6 +258,12 @@ void do_calculation(void) {
         gfx_PrintStringXY(out_buffer, 1 + offset, HEADER_HEIGHT + (i+1) * INDIVIDUAL_HEIGHT + 2);
     }
     
+    for(i = 0; i < torseur_input_size; i++) {
+        T_free(tl[i]);
+    }
+    free(tl);
+    ES_free(s);
+    
     while(true) {
         key = kb_ScanGroup(kb_group_6);
         if (key & kb_Clear) {
