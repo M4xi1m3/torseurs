@@ -11,6 +11,9 @@
 #include <keypadc.h>
 #include <graphx.h>
 
+#include "expression_parser.h"
+#include "torseur.h"
+
 #define FONT_HEIGHT 8
 #define HEADER_HEIGHT 18
 #define ASIDE_WIDTH 100
@@ -68,8 +71,206 @@ void draw_left_menu(void);
 void draw_center(void);
 void draw_input(void);
 void loop(void);
+void do_calculation(void);
 void alloc_torseur_input(TorseurInput**);
 char input_character(void);
+
+static double PRECISION = 0.0001;
+#define MAX_NUMBER_STRING_SIZE 32;
+
+void ftoa(char* buf, double f) {
+    int pos=0,ix,dp,num;
+
+    /* Verification, nombre negatif */
+    if (f<0)
+    {
+        buf[pos++]='-';
+        f = -f;
+    }
+    dp=0;
+    
+   /* Centaines, dizaines, unites etc ... 
+  Bref combien de chiffre avant la virgule ? */
+    while (f>=10.0) 
+    {
+        f=(double)(f/10.0);
+        dp++;
+    } 
+
+   /* Precision 7 digits en tout */
+    for (ix=1;ix<20;ix++)
+    {
+            /* garde la partie entiere */
+            num = f;
+
+            /* le digit traite est enleve de ce qui reste a convertir */
+            f=f-num;
+
+            /* Erreur ! num ne peut pas etre > 9 */
+            if (num>21)
+                buf[pos++]='#';
+            else
+                /* Astucieux ... 
+                '0' => 0x30 ... 
+                par ex, si num = 1 alors 0x30 + 1 = 0x31 => '1'
+                le compte est bon ;-) */
+                buf[pos++]='0'+num;
+
+           /* Positionne la virgule */
+            if (dp==0) 
+                buf[pos++]='.';
+
+            /* Next digit */
+            f=(double)(f*10.0);
+            dp--;
+    } 
+}
+
+/**
+ * Double to ASCII
+ */
+ /*
+char* ftoa(char *s, double n) {
+    int digit, m, m1 = 0;
+    char* c;
+    int neg, useExp;
+    int i, j;
+    // handle special cases
+    if (isnan(n)) {
+        strcpy(s, "nan");
+    } else if (isinf(n)) {
+        strcpy(s, "inf");
+    } else if (n == 0.0) {
+        strcpy(s, "0");
+    } else {
+        
+        c = s;
+        neg = (n < 0);
+        if (neg)
+            n = -n;
+        // calculate magnitude
+        m = log10(n);
+        useExp = (m >= 14 || (neg && m >= 9) || m <= -9);
+        if (neg)
+            *(c++) = '-';
+        // set up for scientific notation
+        if (useExp) {
+            if (m < 0)
+               m -= 1.0;
+            n = n / pow(10.0, m);
+            m1 = m;
+            m = 0;
+        }
+        if (m < 1.0) {
+            m = 0;
+        }
+        // convert the number
+        while (n > PRECISION || m >= 0) {
+            double weight = pow(10.0, m);
+            if (weight > 0 && !isinf(weight)) {
+                digit = floor(n / weight);
+                n -= (digit * weight);
+                *(c++) = '0' + digit;
+            }
+            if (m == 0 && n > 0)
+                *(c++) = '.';
+            m--;
+        }
+        if (useExp) {
+            // convert the exponent
+            
+            *(c++) = 'e';
+            if (m1 > 0) {
+                *(c++) = '+';
+            } else {
+                *(c++) = '-';
+                m1 = -m1;
+            }
+            m = 0;
+            while (m1 > 0) {
+                *(c++) = '0' + m1 % 10;
+                m1 /= 10;
+                m++;
+            }
+            c -= m;
+            for (i = 0, j = m-1; i<j; i++, j--) {
+                // swap without temporary
+                c[i] ^= c[j];
+                c[j] ^= c[i];
+                c[i] ^= c[j];
+            }
+            c += m;
+        }
+        *(c) = '\0';
+    }
+    return s;
+}*/
+
+char* strcpy_malloc(char* buffer) {
+    char* out = malloc(strlen(buffer) + 1);
+    strcpy(out, buffer);
+    return out;
+}
+
+char out_buffer[32];
+int offset;
+void do_calculation(void) {
+    int i;
+    Solutions* s;
+    Torseur** tl = malloc(sizeof(Torseur*) * torseur_input_size);
+    
+    for(i = 0; i < torseur_input_size; i++) {
+        tl[i] = malloc(sizeof(Torseur));
+        tl[i]->name = strcpy_malloc(torseur_input_list[i]->name);
+        tl[i]->point = strcpy_malloc(torseur_input_list[i]->point);
+        tl[i]->p.x = EP_parse(torseur_input_list[i]->px);
+        tl[i]->p.y = EP_parse(torseur_input_list[i]->py);
+        tl[i]->p.z = EP_parse(torseur_input_list[i]->pz);
+        tl[i]->r.x = EP_parse(torseur_input_list[i]->rx);
+        tl[i]->r.y = EP_parse(torseur_input_list[i]->ry);
+        tl[i]->r.z = EP_parse(torseur_input_list[i]->rz);
+        tl[i]->m.x = EP_parse(torseur_input_list[i]->mx);
+        tl[i]->m.y = EP_parse(torseur_input_list[i]->my);
+        tl[i]->m.z = EP_parse(torseur_input_list[i]->mz);
+    }
+    
+    s = T_solve(tl, torseur_input_size);
+    
+    gfx_FillScreen(GLOBAL_BG_COLOR);
+    shift = false;
+    alpha = false;
+    draw_header();
+    
+    gfx_SetTextFGColor(GLOBAL_FG_COLOR);
+    
+    gfx_PrintStringXY("-- Resultats: ", 1, HEADER_HEIGHT + 0 * INDIVIDUAL_HEIGHT + 2);
+    
+    for(i = 0; i < s->number; i++) {
+        offset = 0;
+        ftoa(out_buffer, s->values[i]);
+        // out_buffer[0] = '\0';
+        // sprintf(out_buffer, "%lg", s->values[i]);
+        
+        gfx_PrintStringXY(s->names[i], 1 + offset, HEADER_HEIGHT + (i+1) * INDIVIDUAL_HEIGHT + 2);
+        offset += gfx_GetStringWidth(s->names[i]);
+        gfx_PrintStringXY(" = ", 1 + offset, HEADER_HEIGHT + (i+1) * INDIVIDUAL_HEIGHT + 2);
+        offset += gfx_GetStringWidth(" = ");
+        gfx_PrintStringXY(out_buffer, 1 + offset, HEADER_HEIGHT + (i+1) * INDIVIDUAL_HEIGHT + 2);
+    }
+    
+    while(true) {
+        key = kb_ScanGroup(kb_group_6);
+        if (key & kb_Clear) {
+            break;
+        }
+    }
+    
+    draw_header();
+    draw_left_menu();
+    draw_center();
+    
+    delay(DEBOUNCE_DELAY);
+}
 
 char c;
 int len;
@@ -113,6 +314,7 @@ void loop(void) {
                     delay(DEBOUNCE_DELAY);
                 } else if (hover_id == torseur_input_size+1) {
                     // We selected calc button.
+                    do_calculation();
                 } else {
                     // We selected a torseur
                     aside_select_id = hover_id;
@@ -317,7 +519,6 @@ void main(void) {
     gfx_End();
 }
 
-int offset;
 void draw_center(void) {
     gfx_SetColor(GLOBAL_BG_COLOR);
     gfx_FillRectangle(ASIDE_WIDTH, HEADER_HEIGHT, gfx_lcdWidth - ASIDE_WIDTH, gfx_lcdHeight - HEADER_HEIGHT);
@@ -719,7 +920,6 @@ void setup(void) {
     torseur_input_list = NULL;
     
     gfx_Begin(gfx_8bpp);
-    gfx_FillScreen(gfx_white);
     
     gfx_palette[GLOBAL_FG_COLOR] = gfx_RGBTo1555(0, 0, 0);
     gfx_palette[GLOBAL_BG_COLOR] = gfx_RGBTo1555(255, 255, 255);
@@ -733,6 +933,8 @@ void setup(void) {
     gfx_palette[BUTTON_BG_COLOR]  = gfx_RGBTo1555(0, 119, 174);
     gfx_palette[HBUTTON_BG_COLOR] = gfx_RGBTo1555(0, 80, 118);
     gfx_palette[HOVER_BG_COLOR2]  = gfx_RGBTo1555(180, 180, 180);
+    
+    gfx_FillScreen(GLOBAL_BG_COLOR);
 }
 
 void draw_header(void) {
