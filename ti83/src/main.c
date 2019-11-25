@@ -320,7 +320,8 @@ void loop(void) {
                     delay(DEBOUNCE_DELAY);
                 } else if (hover_id == torseur_input_size+1) {
                     // We selected calc button.
-                    do_calculation();
+                    if (torseur_input_size > 0)
+                        do_calculation();
                 } else {
                     // We selected a torseur
                     aside_select_id = hover_id;
